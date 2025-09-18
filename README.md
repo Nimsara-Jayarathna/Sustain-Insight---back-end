@@ -37,17 +37,17 @@ Follow these steps to set up PostgreSQL locally:
   psql --version
   ```
 ### 3. PostgreSQL Setup (Quick Start)
-  macOS (Homebrew):
+  **macOS (Homebrew):**
   ```bash
   brew services start postgresql
   ```
 
-  Linux:
+  **Linux:**
   ```bash
   sudo service postgresql start
   ```
   
-  Windows:
+  **Windows:**
   ```bash
   Start PostgreSQL service via Services or pgAdmin.
   ```
@@ -86,19 +86,45 @@ Follow these steps to set up PostgreSQL locally:
 https://github.com/Nimsara-Jayarathna/Sustain-Insight---back-end.git
 ```
 
-# 2. Install dependencies
+### 2. Install dependencies
 ```bash
 mvn clean install
 ```
 
-# 4. Run the backend
+### 4. Run the backend
 ```bash
 mvn spring-boot:run
 ```
 
-# 5. Verify health endpoint
+### 5. Verify health endpoint
 ```bash
 curl http://localhost:8080/actuator/health
 # → {"status":"UP"}
 ```
+
+
+## 👥 Collaboration Workflow
+
+- **Work on feature branches:**  
+  Each backend contributor should create a dedicated branch for their feature or fix.  
+  Example branch names:
+  - `feat/backend-auth`
+  - `feat/backend-articles`
+  - `feat/backend-preferences`
+  - `fix/flyway-migration`
+
+- **Open Pull Requests (PRs) to `main`:**  
+  - After implementing a feature or fix, push your branch and open a PR.  
+  - Request a code review from at least one teammate.  
+  - Merge only after review approval and passing build/tests.
+
+- **`main` is protected:**  
+  - Direct commits and force pushes to `main` are blocked.  
+  - All code changes must go through PR + review.  
+  - Keeps the backend always stable for demos and integration with the frontend.
+
+- **Flyway migration workflow:**  
+  - Any schema change must be done via a new migration script in `src/main/resources/db/migration`.  
+  - Use sequential naming (`V2__add_bookmark_table.sql`, `V3__add_index.sql`).
+  - Never edit an already-applied migration — create a new one instead.
 
