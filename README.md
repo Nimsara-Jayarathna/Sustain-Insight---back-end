@@ -83,7 +83,7 @@ Follow these steps to set up PostgreSQL locally:
 
 ### 1. Clone the repo
 ```bash
-https://github.com/Nimsara-Jayarathna/Sustain-Insight---back-end.git
+git clone https://github.com/Nimsara-Jayarathna/Sustain-Insight---back-end.git
 ```
 
 ### 2. Install dependencies
