@@ -21,6 +21,63 @@ It is built with **Spring Boot** and uses **PostgreSQL** with **Flyway migration
 - Maven
 
 ---
+## 🗄️ Database Setup (PostgreSQL)
+
+Follow these steps to set up PostgreSQL locally:
+
+### 1. Install PostgreSQL
+- **Windows / macOS:** [Download from postgresql.org](https://www.postgresql.org/download/)
+- **Linux (Ubuntu/Debian):**
+  ```bash
+  sudo apt update && sudo apt install postgresql postgresql-contrib
+  ```
+
+### 2. Verify the installation
+  ```bash
+  psql --version
+  ```
+### 3. PostgreSQL Setup (Quick Start)
+  macOS (Homebrew):
+  ```bash
+  brew services start postgresql
+  ```
+
+  Linux:
+  ```bash
+  sudo service postgresql start
+  ```
+  
+  Windows:
+  ```bash
+  Start PostgreSQL service via Services or pgAdmin.
+  ```
+### 4. Create the Database:
+  ```bash
+  psql -U postgres
+  ```
+
+### 5. Then inside psql:
+  ```bash
+  CREATE DATABASE news_db;
+  \q
+  ```
+
+### 6. (Optional) Set Password for postgres User:
+  ```bash
+  psql -U postgres
+  ALTER USER postgres PASSWORD 'postgres';
+  \q
+  ```
+
+### 7. (Optional) Environment Variables (defaults shown below):
+  ```bash
+  export DB_HOST=localhost
+  export DB_PORT=5432
+  export DB_NAME=news_db
+  export DB_USER=postgres
+  export DB_PASS=postgres
+  ```
+
 
 ## 🚀 Getting Started
 
@@ -29,35 +86,19 @@ It is built with **Spring Boot** and uses **PostgreSQL** with **Flyway migration
 https://github.com/Nimsara-Jayarathna/Sustain-Insight---back-end.git
 ```
 
-
 # 2. Install dependencies
 ```bash
-./mvnw clean install
-```
-
-
-# 3. Start PostgreSQL with Docker
-```bash
-docker run --name news-pg \
-  -e POSTGRES_USER=postgres \
-  -e POSTGRES_PASSWORD=postgres \
-  -e POSTGRES_DB=news_db \
-  -p 5432:5432 \
-  -d postgres:16
+mvn clean install
 ```
 
 # 4. Run the backend
 ```bash
-./mvnw spring-boot:run
+mvn spring-boot:run
 ```
-
 
 # 5. Verify health endpoint
 ```bash
 curl http://localhost:8080/actuator/health
 # → {"status":"UP"}
 ```
-# 6. Check database tables
-```bash
-docker exec -it news-pg psql -U postgres -d news_db -c "\dt
-```
+
