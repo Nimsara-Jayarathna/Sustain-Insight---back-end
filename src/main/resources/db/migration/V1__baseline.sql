@@ -1,63 +1,63 @@
-create table users (
-                       id bigserial primary key,
-                       first_name text not null,
-                       last_name text not null,
-                       job_title text,
-                       email text not null unique,
-                       password_hash text not null,
-                       created_at timestamptz not null default now(),
-                       updated_at timestamptz not null default now()
+CREATE TABLE IF NOT EXISTS users (
+    id bigserial PRIMARY KEY,
+    first_name text NOT NULL,
+    last_name text NOT NULL,
+    job_title text,
+    email text NOT NULL UNIQUE,
+    password_hash text NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-create table categories (
-                            id bigserial primary key,
-                            name text not null unique
+CREATE TABLE IF NOT EXISTS categories (
+    id bigserial PRIMARY KEY,
+    name text NOT NULL UNIQUE
 );
 
-create table sources (
-                         id bigserial primary key,
-                         name text not null unique
+CREATE TABLE IF NOT EXISTS sources (
+    id bigserial PRIMARY KEY,
+    name text NOT NULL UNIQUE
 );
 
-create table articles (
-                          id bigserial primary key,
-                          title text not null,
-                          summary text,
-                          content text,
-                          image_url text,
-                          published_at timestamptz,
-                          created_at timestamptz not null default now(),
-                          updated_at timestamptz not null default now()
+CREATE TABLE IF NOT EXISTS articles (
+    id bigserial PRIMARY KEY,
+    title text NOT NULL,
+    summary text,
+    content text,
+    image_url text,
+    published_at timestamptz,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-create table article_categories (
-                                    article_id bigint not null references articles(id) on delete cascade,
-                                    category_id bigint not null references categories(id) on delete restrict,
-                                    primary key(article_id, category_id)
+CREATE TABLE IF NOT EXISTS article_categories (
+    article_id bigint NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+    category_id bigint NOT NULL REFERENCES categories(id) ON DELETE RESTRICT,
+    PRIMARY KEY(article_id, category_id)
 );
 
-create table article_sources (
-                                 article_id bigint not null references articles(id) on delete cascade,
-                                 source_id bigint not null references sources(id) on delete restrict,
-                                 primary key(article_id, source_id)
+CREATE TABLE IF NOT EXISTS article_sources (
+    article_id bigint NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+    source_id bigint NOT NULL REFERENCES sources(id) ON DELETE RESTRICT,
+    PRIMARY KEY(article_id, source_id)
 );
 
-create table user_preferred_categories (
-                                           user_id bigint not null references users(id) on delete cascade,
-                                           category_id bigint not null references categories(id) on delete cascade,
-                                           primary key(user_id, category_id)
+CREATE TABLE IF NOT EXISTS user_preferred_categories (
+    user_id bigint NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    category_id bigint NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+    PRIMARY KEY(user_id, category_id)
 );
 
-create table user_preferred_sources (
-                                        user_id bigint not null references users(id) on delete cascade,
-                                        source_id bigint not null references sources(id) on delete cascade,
-                                        primary key(user_id, source_id)
+CREATE TABLE IF NOT EXISTS user_preferred_sources (
+    user_id bigint NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    source_id bigint NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
+    PRIMARY KEY(user_id, source_id)
 );
 
-create table bookmarks (
-                           id bigserial primary key,
-                           user_id bigint not null references users(id) on delete cascade,
-                           article_id bigint not null references articles(id) on delete cascade,
-                           created_at timestamptz not null default now(),
-                           constraint uq_bookmark unique (user_id, article_id)
+CREATE TABLE IF NOT EXISTS bookmarks (
+    id bigserial PRIMARY KEY,
+    user_id bigint NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    article_id bigint NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT uq_bookmark UNIQUE (user_id, article_id)
 );

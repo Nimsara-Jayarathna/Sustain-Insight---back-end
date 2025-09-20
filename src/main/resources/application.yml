@@ -2,17 +2,18 @@ spring:
   application:
     name: backend
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:news_db}
-    username: ${DB_USER:postgres}
-    password: ${DB_PASS:postgres}
+    url: jdbc:postgresql://db.mobwgwngyzlfassoyiny.supabase.co:5432/postgres
+    username: postgres
+    password: wXs!4GpBxMb8-gK
   jpa:
     hibernate:
-      ddl-auto: validate
-    open-in-view: false
+      ddl-auto: none
+      open-in-view: false
     properties:
       hibernate.jdbc.time_zone: UTC
   flyway:
     enabled: true
+    baseline-on-migrate: true
     locations: classpath:db/migration
 
 server:
