@@ -13,4 +13,8 @@ public interface ArticleRepository extends JpaRepository<Article, Long> {
     // Native Postgres-friendly query to fetch latest N articles
     @Query(value = "SELECT * FROM articles ORDER BY published_at DESC LIMIT ?1", nativeQuery = true)
     List<Article> findTopNArticles(int limit);
+
+    // Fetch all articles ordered by timestamp
+    @Query(value = "SELECT * FROM articles ORDER BY published_at DESC", nativeQuery = true)
+    List<Article> findAllOrderedByPublishedAt();
 }

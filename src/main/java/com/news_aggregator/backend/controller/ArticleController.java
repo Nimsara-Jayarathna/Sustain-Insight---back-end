@@ -23,4 +23,9 @@ public class ArticleController {
         }
         return ResponseEntity.ok(articleService.getLatestArticles(limit));
     }
+
+    @GetMapping(value = "/all", produces = "application/json")
+    public ResponseEntity<List<ArticleDto>> getAllArticles() {
+        return ResponseEntity.ok(articleService.getAllArticles());
+    }
 }
