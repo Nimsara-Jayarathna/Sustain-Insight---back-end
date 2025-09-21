@@ -22,7 +22,14 @@ public class ArticleService {
     public List<ArticleDto> getLatestArticles(int limit) {
         List<Article> articles = articleRepository.findTopNArticles(limit);
         return articles.stream()
-                .map(this::mapToDto)   // ✅ convert entity → DTO
+                .map(this::mapToDto)
+                .collect(Collectors.toList());
+    }
+
+    public List<ArticleDto> getAllArticles() {
+        List<Article> articles = articleRepository.findAllOrderedByPublishedAt();
+        return articles.stream()
+                .map(this::mapToDto)
                 .collect(Collectors.toList());
     }
 
