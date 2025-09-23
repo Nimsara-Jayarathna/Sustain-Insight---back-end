@@ -46,18 +46,30 @@ public class AuthController {
         userRepository.save(user);
 
         String token = jwtService.generateToken(user);
+
+        System.out.println("DEBUG → Signup success for: " + user.getEmail());
         return ResponseEntity.ok(new AuthResponse(token, user));
     }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
         Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
+                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+        );
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        User user = (User) authentication.getPrincipal();
+        Object principal = authentication.getPrincipal();
+        User user;
+        if (principal instanceof User) {
+            user = (User) principal;
+        } else {
+            throw new RuntimeException("Unexpected principal type: " + principal.getClass());
+        }
+
         String token = jwtService.generateToken(user);
+
+        System.out.println("DEBUG → Login success for: " + user.getEmail());
         return ResponseEntity.ok(new AuthResponse(token, user));
     }
 }
