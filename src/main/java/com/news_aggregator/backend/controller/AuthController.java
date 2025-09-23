@@ -40,7 +40,7 @@ public class AuthController {
         User user = new User();
         user.setFirstName(request.getFirstName());
         user.setLastName(request.getLastName());
-        user.setJobTitle(request.getJobTitle());
+        //user.setJobTitle(request.getJobTitle());
         user.setEmail(request.getEmail());
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         userRepository.save(user);
