@@ -2,9 +2,9 @@ spring:
   application:
     name: backend
   datasource:
-    url: jdbc:postgresql://db.mobwgwngyzlfassoyiny.supabase.co:5432/postgres
-    username: postgres
-    password: wXs!4GpBxMb8-gK
+    url: jdbc:postgresql://${PGHOST}:${PGPORT}/${PGDATABASE}
+    username: ${PGUSER}
+    password: ${PGPASSWORD}
   jpa:
     hibernate:
       ddl-auto: none
@@ -15,7 +15,7 @@ spring:
     enabled: false
 
 server:
-  port: 8080
+  port: ${PORT:8080}
 
 management:
   endpoints:
@@ -25,6 +25,7 @@ management:
   endpoint:
     health:
       show-details: always
+
 logging:
   level:
     org.springframework.security: DEBUG
