@@ -1,11 +1,13 @@
 spring:
   application:
     name: backend
+
   datasource:
-    url: jdbc:postgresql://db.mobwgwngyzlfassoyiny.supabase.co:5432/postgres
+    url: jdbc:postgresql://db.mobwgwngyzlfassoyiny.supabase.co:5432/postgres?sslmode=require
     username: postgres
     password: wXs!4GpBxMb8-gK
     driver-class-name: org.postgresql.Driver
+
   jpa:
     hibernate:
       ddl-auto: none
@@ -13,6 +15,7 @@ spring:
     properties:
       hibernate.jdbc.time_zone: UTC
       hibernate.dialect: org.hibernate.dialect.PostgreSQLDialect
+
   flyway:
     enabled: false
 
