@@ -3,9 +3,11 @@ package com.news_aggregator.backend.controller;
 import com.news_aggregator.backend.dto.ArticleDto;
 import com.news_aggregator.backend.service.ArticleService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -25,7 +27,12 @@ public class ArticleController {
     }
 
     @GetMapping(value = "/all", produces = "application/json")
-    public ResponseEntity<List<ArticleDto>> getAllArticles() {
-        return ResponseEntity.ok(articleService.getAllArticles());
+    public ResponseEntity<List<ArticleDto>> getAllArticles(
+            @RequestParam(required = false, name = "category") List<Long> categoryIds,
+            @RequestParam(required = false, name = "source") List<Long> sourceIds,
+            @RequestParam(required = false, name = "search") String keyword,
+            @RequestParam(required = false, name = "date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+    ) {
+        return ResponseEntity.ok(articleService.getAllArticles(categoryIds, sourceIds, keyword, date));
     }
 }

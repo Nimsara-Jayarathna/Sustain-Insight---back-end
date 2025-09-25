@@ -1,6 +1,6 @@
 package com.news_aggregator.backend.dto;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 public class ArticleDto {
@@ -8,7 +8,7 @@ public class ArticleDto {
     private String title;
     private String summary;
     private String imageUrl;
-    private LocalDateTime publishedAt;
+    private OffsetDateTime publishedAt;
     private List<String> sources;
     private List<String> categories;
 
@@ -16,7 +16,7 @@ public class ArticleDto {
     public ArticleDto() {}
 
     public ArticleDto(Long id, String title, String summary, String imageUrl,
-                      LocalDateTime publishedAt, List<String> sources, List<String> categories) {
+                      OffsetDateTime publishedAt, List<String> sources, List<String> categories) {
         this.id = id;
         this.title = title;
         this.summary = summary;
@@ -35,8 +35,8 @@ public class ArticleDto {
     public void setSummary(String summary) { this.summary = summary; }
     public String getImageUrl() { return imageUrl; }
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
-    public LocalDateTime getPublishedAt() { return publishedAt; }
-    public void setPublishedAt(LocalDateTime publishedAt) { this.publishedAt = publishedAt; }
+    public OffsetDateTime getPublishedAt() { return publishedAt; }
+    public void setPublishedAt(OffsetDateTime publishedAt) { this.publishedAt = publishedAt; }
     public List<String> getSources() { return sources; }
     public void setSources(List<String> sources) { this.sources = sources; }
     public List<String> getCategories() { return categories; }
