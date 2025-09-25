@@ -7,6 +7,8 @@ import jakarta.persistence.criteria.Join;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 public class ArticleSpecification {
@@ -56,6 +58,17 @@ public class ArticleSpecification {
             return criteriaBuilder.equal(
                     criteriaBuilder.function("DATE", LocalDate.class, root.get("publishedAt")),
                     date
+            );
+        };
+    }
+
+    public static Specification<Article> isWithinLast24Hours() {
+        return (root, query, criteriaBuilder) -> {
+            OffsetDateTime now = OffsetDateTime.now();
+            OffsetDateTime twentyFourHoursAgo = now.minus(24, ChronoUnit.HOURS);
+            return criteriaBuilder.and(
+                    criteriaBuilder.greaterThanOrEqualTo(root.get("publishedAt"), twentyFourHoursAgo),
+                    criteriaBuilder.lessThanOrEqualTo(root.get("publishedAt"), now)
             );
         };
     }
