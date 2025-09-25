@@ -5,6 +5,7 @@ spring:
     url: jdbc:postgresql://db.mobwgwngyzlfassoyiny.supabase.co:5432/postgres
     username: postgres
     password: wXs!4GpBxMb8-gK
+    driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
       ddl-auto: none
