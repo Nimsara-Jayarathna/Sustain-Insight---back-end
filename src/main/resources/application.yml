@@ -2,9 +2,9 @@ spring:
   application:
     name: backend
   datasource:
-    url: jdbc:postgresql://${PGHOST}:${PGPORT}/${PGDATABASE}
-    username: ${PGUSER}
-    password: ${PGPASSWORD}
+    url: jdbc:postgresql://db.mobwgwngyzlfassoyiny.supabase.co:5432/postgres
+    username: postgres
+    password: wXs!4GpBxMb8-gK
   jpa:
     hibernate:
       ddl-auto: none
