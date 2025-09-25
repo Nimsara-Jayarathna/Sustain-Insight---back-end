@@ -11,6 +11,7 @@ spring:
       open-in-view: false
     properties:
       hibernate.jdbc.time_zone: UTC
+      hibernate.dialect: org.hibernate.dialect.PostgreSQLDialect
   flyway:
     enabled: false
 
