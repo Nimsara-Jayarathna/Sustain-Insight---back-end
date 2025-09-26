@@ -3,9 +3,9 @@ spring:
     name: backend
 
   datasource:
-    url: postgresql://postgres:XTkihPfViqPyEOJDVPXnaDuVrHDJYwVU@shortline.proxy.rlwy.net:57086/railway
-    username: postgres
-    password: XTkihPfViqPyEOJDVPXnaDuVrHDJYwVU
+    url: jdbc:postgresql://${PGHOST}:${PGPORT}/${PGDATABASE}?sslmode=require
+    username: ${PGUSER}
+    password: ${PGPASSWORD}
     driver-class-name: org.postgresql.Driver
 
   jpa:
