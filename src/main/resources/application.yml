@@ -6,7 +6,7 @@ spring:
     url: jdbc:postgresql://${PGHOST}:${PGPORT}/${PGDATABASE}?sslmode=require
     username: ${PGUSER}
     password: ${PGPASSWORD}
-    driver-class-name: org.postgresql.Driver
+    
 
   jpa:
     hibernate:
@@ -14,13 +14,11 @@ spring:
       open-in-view: false
     properties:
       hibernate.jdbc.time_zone: UTC
-      hibernate.dialect: org.hibernate.dialect.PostgreSQLDialect
-
   flyway:
     enabled: false
 
 server:
-  port: ${PORT:8080}
+  port: 8080
 
 management:
   endpoints:
@@ -30,7 +28,6 @@ management:
   endpoint:
     health:
       show-details: always
-
 logging:
   level:
     org.springframework.security: DEBUG
