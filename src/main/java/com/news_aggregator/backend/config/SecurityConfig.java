@@ -48,7 +48,7 @@ public class SecurityConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/api/**")
-                        .allowedOriginPatterns("http://localhost:5173", "https://sustain-insight-front-end-git-0723b0-nimsaras-projects-d457ef24.vercel.app/")
+                        .allowedOriginPatterns("http://localhost:5173", "https://sustain-insight-front-end-git-0723b0-nimsaras-projects-d457ef24.vercel.app/" , "https://sustain-insight-front-end.vercel.app/")
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                         .allowedHeaders("*")
                         .allowCredentials(true);
