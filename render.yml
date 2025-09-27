@@ -1,9 +1,0 @@
-services:
-  - type: web
-    name: spring-boot-backend
-    env: java
-    buildCommand: "./mvnw clean package -DskipTests"
-    startCommand: "java -jar target/*.jar"
-    envVars:
-      - key: JAVA_VERSION
-        value: 21

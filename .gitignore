@@ -33,3 +33,7 @@ build/
 .vscode/
 src/.DS_Store
 .DS_Store
+
+# Env files
+.env
+.env.*       # ignore .env.development, .env.production, etc. (optional)

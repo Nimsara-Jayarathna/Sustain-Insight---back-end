@@ -6,14 +6,14 @@ spring:
     url: jdbc:postgresql://${PGHOST}:${PGPORT}/${PGDATABASE}?sslmode=require
     username: ${PGUSER}
     password: ${PGPASSWORD}
-    
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: update   # ⚠️ use "validate" in production
       open-in-view: false
     properties:
       hibernate.jdbc.time_zone: UTC
+
   flyway:
     enabled: false
 
@@ -24,10 +24,14 @@ management:
   endpoints:
     web:
       exposure:
-        include: "*"
+        include: health,info   # ⚠️ safer than "*"
   endpoint:
     health:
       show-details: always
+
 logging:
   level:
     org.springframework.security: DEBUG
+
+cors:
+  allowed-origins: "http://localhost:5173,https://sustain-insight-front-end.vercel.app,https://sustain-insight-front-end-git-0723b0-nimsaras-projects-d457ef24.vercel.app"
