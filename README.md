@@ -1,130 +1,142 @@
 # 📰 Sustain Insight – Backend
 
-This is the **backend service** for the News Aggregator assignment project.  
-It is built with **Spring Boot** and uses **PostgreSQL** with **Flyway migrations** for database schema management.
+This is the **backend service** for the News Aggregator project.
+It is built with **Spring Boot** and uses a **Neon PostgreSQL cloud database** for both development and production.
+Configuration is **environment-driven** (`.env` + `application.yml`), keeping secrets out of the repo.
 
 ---
 
 ## ✨ Features
-- REST API for news articles, categories, sources, bookmarks, and user preferences
-- User authentication with email + password (JWT planned)
-- PostgreSQL database with Flyway migration scripts
-- Clean project structure for easy collaboration
+
+* REST API for news articles, categories, sources, bookmarks, and user preferences
+* User authentication with JWT
+* Environment-based config with `.env` and Spring profiles
+* CORS configuration for frontend integration
+* Deployed backend connected to Neon DB (no local DB needed)
 
 ---
 
 ## 🛠 Tech Stack
-- Java 21
-- Spring Boot (Web, Data JPA, Security, Validation, Actuator)
-- PostgreSQL
-- Flyway (DB migrations)
-- Maven
+
+* Java 21
+* Spring Boot (Web, Data JPA, Security, Validation, Actuator)
+* PostgreSQL (via Neon)
+* Maven
 
 ---
-## 🗄️ Database Setup (PostgreSQL)
 
-Follow these steps to set up PostgreSQL locally:
+## ⚙️ Environment Setup
 
-### 1. Install PostgreSQL
-- **Windows / macOS:** [Download from postgresql.org](https://www.postgresql.org/download/)
-- **Linux (Ubuntu/Debian):**
-  ```bash
-  sudo apt update && sudo apt install postgresql postgresql-contrib
-  ```
+Run the following command depending on your platform, replacing placeholders (`<VALUE>`) with your actual Neon credentials and settings:
 
-### 2. Verify the installation
-  ```bash
-  psql --version
-  ```
-### 3. PostgreSQL Setup (Quick Start)
-  **macOS (Homebrew):**
-  ```bash
-  brew services start postgresql
-  ```
+### macOS / Linux (bash/zsh)
 
-  **Linux:**
-  ```bash
-  sudo service postgresql start
-  ```
-  
-  **Windows:**
-  ```bash
-  Start PostgreSQL service via Services or pgAdmin.
-  ```
-### 4. Create the Database:
-  ```bash
-  psql -U postgres
-  ```
+```bash
+export PGHOST=<your-neon-host>
+export PGPORT=<your-port>
+export PGDATABASE=<your-database>
+export PGUSER=<your-username>
+export PGPASSWORD=<your-password>
 
-### 5. Then inside psql:
-  ```bash
-  CREATE DATABASE news_db;
-  \q
-  ```
+export SERVER_PORT=8080
+export CORS_ALLOWED_ORIGINS=http://localhost:5173,https://sustain-insight-front-end.vercel.app
+```
 
-### 6. (Optional) Set Password for postgres User:
-  ```bash
-  psql -U postgres
-  ALTER USER postgres PASSWORD 'postgres';
-  \q
-  ```
+### Windows (PowerShell)
 
-### 7. (Optional) Environment Variables (defaults shown below):
-  ```bash
-  export DB_HOST=localhost
-  export DB_PORT=5432
-  export DB_NAME=news_db
-  export DB_USER=postgres
-  export DB_PASS=postgres
-  ```
+```powershell
+setx PGHOST "<your-neon-host>"
+setx PGPORT "<your-port>"
+setx PGDATABASE "<your-database>"
+setx PGUSER "<your-username>"
+setx PGPASSWORD "<your-password>"
 
+setx SERVER_PORT "8080"
+setx CORS_ALLOWED_ORIGINS "http://localhost:5173,https://sustain-insight-front-end.vercel.app"
+```
+
+Spring Boot automatically maps these environment variables into `application.yml`.
+
+---
 
 ## 🚀 Getting Started
 
 ### 1. Clone the repo
+
 ```bash
 git clone https://github.com/Nimsara-Jayarathna/Sustain-Insight---back-end.git
+cd Sustain-Insight---back-end
 ```
 
 ### 2. Install dependencies
+
 ```bash
 mvn clean install
 ```
 
-### 4. Run the backend
+### 3. Run the backend
+
 ```bash
 mvn spring-boot:run
 ```
 
-### 5. Verify health endpoint
+### 4. Verify health endpoint
+
 ```bash
 curl http://localhost:8080/actuator/health
 # → {"status":"UP"}
 ```
 
+---
 
 ## 👥 Collaboration Workflow
 
-- **Work on feature branches:**  
-  Each backend contributor should create a dedicated branch for their feature or fix.  
-  Example branch names:
-  - `feat/backend-auth`
-  - `feat/backend-articles`
-  - `feat/backend-preferences`
-  - `fix/flyway-migration`
+* **Feature branches:**
+  Use dedicated branches like:
 
-- **Open Pull Requests (PRs) to `main`:**  
-  - After implementing a feature or fix, push your branch and open a PR.  
-  - Request a code review from at least one teammate.  
-  - Merge only after review approval and passing build/tests.
+  * `feature/auth`
+  * `feature/articles`
+  * `feature/cors-config`
 
-- **`main` is protected:**  
-  - Direct commits and force pushes to `main` are blocked.  
-  - All code changes must go through PR + review.  
-  - Keeps the backend always stable for demos and integration with the frontend.
+* **Development branch (`dev`):**
 
-- **Flyway migration workflow:**  
-  - Any schema change must be done via a new migration script in `src/main/resources/db/migration`.  
-  - Use sequential naming (`V2__add_bookmark_table.sql`, `V3__add_index.sql`).
-  - Never edit an already-applied migration — create a new one instead.
+  * All work is merged into `dev` via PRs.
+  * Requires review and passing checks.
+  * Acts as the integration branch before production.
 
+* **Main branch (`main`):**
+
+  * Production-ready branch, directly used for deployment.
+  * PRs from `dev` are squashed and merged into `main`.
+
+* **Branch protections:**
+
+  * PRs required for merges.
+  * No direct commits or force pushes to `main` or `dev`.
+  * Status checks and reviews required.
+
+---
+
+## 📂 Project Structure
+
+```
+src/main/java/com/news_aggregator/backend
+  ├── config/         # Security & CORS
+  ├── controller/     # REST endpoints
+  ├── model/          # Entities
+  ├── repository/     # JPA repositories
+  ├── service/        # Business logic
+  └── util/           # Helpers (if needed)
+
+src/main/resources
+  ├── application.yml # Config (reads from env)
+```
+
+---
+
+## 🔒 Security Notes
+
+* Secrets are provided via environment variables — never hardcoded.
+* Only placeholder instructions are included in README.
+* Neon DB credentials and JWT secrets must be provided per environment.
+* If secrets are exposed in Git history, rotate them immediately.
