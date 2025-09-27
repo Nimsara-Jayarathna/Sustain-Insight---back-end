@@ -34,4 +34,4 @@ logging:
     org.springframework.security: DEBUG
 
 cors:
-  allowed-origins: "http://localhost:5173,https://sustain-insight-front-end.vercel.app,https://sustain-insight-front-end-git-0723b0-nimsaras-projects-d457ef24.vercel.app"
+  allowed-origins: ${CORS_ALLOWED_ORIGINS}
