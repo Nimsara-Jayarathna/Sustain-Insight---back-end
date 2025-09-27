@@ -1,13 +1,16 @@
 spring:
   application:
     name: backend
+
   datasource:
-    url: jdbc:postgresql://db.mobwgwngyzlfassoyiny.supabase.co:5432/postgres
-    username: postgres
-    password: wXs!4GpBxMb8-gK
+    url: jdbc:postgresql://${PGHOST}:${PGPORT}/${PGDATABASE}?sslmode=require
+    username: ${PGUSER}
+    password: ${PGPASSWORD}
+    
+
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: update
       open-in-view: false
     properties:
       hibernate.jdbc.time_zone: UTC
