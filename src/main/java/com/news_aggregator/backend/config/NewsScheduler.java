@@ -16,7 +16,7 @@ public class NewsScheduler {
     }
 
     // Run once every 1 minute, only after last run finishes
-    @Scheduled(fixedDelay = 60 * 1000, initialDelay = 10 * 1000) 
+    @Scheduled(fixedDelay = 60 * 60 * 1000, initialDelay = 10 * 1000) 
     public void fetchDailyNews() {
         try {
             // Fetch exactly 2 sustainability articles each run
