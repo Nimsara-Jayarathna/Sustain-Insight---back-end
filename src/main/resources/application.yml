@@ -31,8 +31,9 @@ management:
 
 logging:
   level:
-    org.springframework.security: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.springframework.security: INFO
+    org.hibernate.type.descriptor.sql.BasicBinder: INFO
+
 
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS}
