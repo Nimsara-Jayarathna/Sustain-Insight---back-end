@@ -1,6 +1,7 @@
 package com.news_aggregator.backend.controller;
 
 import com.news_aggregator.backend.dto.ArticleDto;
+import com.news_aggregator.backend.dto.PagedResponse;
 import com.news_aggregator.backend.service.ArticleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -27,12 +28,16 @@ public class ArticleController {
     }
 
     @GetMapping(value = "/all", produces = "application/json")
-    public ResponseEntity<List<ArticleDto>> getAllArticles(
-            @RequestParam(required = false, name = "category") List<Long> categoryIds,
-            @RequestParam(required = false, name = "source") List<Long> sourceIds,
-            @RequestParam(required = false, name = "search") String keyword,
-            @RequestParam(required = false, name = "date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
-    ) {
-        return ResponseEntity.ok(articleService.getAllArticles(categoryIds, sourceIds, keyword, date));
-    }
+public ResponseEntity<PagedResponse<ArticleDto>> getAllArticles(
+        @RequestParam(required = false, name = "category") List<Long> categoryIds,
+        @RequestParam(required = false, name = "source") List<Long> sourceIds,
+        @RequestParam(required = false, name = "search") String keyword,
+        @RequestParam(required = false, name = "date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+        @RequestParam(defaultValue = "1") int page,
+        @RequestParam(defaultValue = "10") int size
+) {
+    return ResponseEntity.ok(articleService.getAllArticles(categoryIds, sourceIds, keyword, date, page, size));
+}
+
+    
 }
