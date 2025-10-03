@@ -14,12 +14,12 @@ public class NewsScheduler {
     private final int fetchingEnabled; // 0 or 1
 
     public NewsScheduler(NewsService newsService,
-                         @Value("${fetching.enabled:0}") int fetchingEnabled) {
+                         @Value("${fetching.enabled}") int fetchingEnabled) {
         this.newsService = newsService;
         this.fetchingEnabled = fetchingEnabled;
     }
-    // Run once every 1 hour, only after last run finishes
-    @Scheduled(fixedDelay = 60 * 60 * 1000, initialDelay = 10 * 1000)
+    // Run once every 1 minute, only after last run finishes
+    @Scheduled(fixedDelay = 60 * 1000, initialDelay = 10 * 1000)
     public void fetchDailyNews() {
         if (fetchingEnabled == 0) {
             System.out.println("⏸ Scheduled fetch disabled (fetching.enabled=0).");
