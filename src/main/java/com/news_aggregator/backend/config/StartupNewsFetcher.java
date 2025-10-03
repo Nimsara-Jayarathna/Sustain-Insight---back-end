@@ -12,7 +12,7 @@ public class StartupNewsFetcher implements CommandLineRunner {
     private final int fetchingEnabled; // 0 or 1
 
     public StartupNewsFetcher(NewsService newsService,
-                              @Value("${fetching.enabled:0}") int fetchingEnabled) {
+                              @Value("${fetching.enabled}") int fetchingEnabled) {
         this.newsService = newsService;
         this.fetchingEnabled = fetchingEnabled;
     }
