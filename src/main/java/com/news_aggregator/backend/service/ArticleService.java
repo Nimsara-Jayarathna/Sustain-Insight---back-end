@@ -9,17 +9,13 @@ import com.news_aggregator.backend.model.User;
 import com.news_aggregator.backend.repository.ArticleRepository;
 import com.news_aggregator.backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
-import java.time.OffsetDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -29,6 +25,9 @@ public class ArticleService {
 
     private final ArticleRepository articleRepository;
     private final UserRepository userRepository;
+
+    @Value("${feed.hoursWindow}")   // 👈 configurable via env
+    private int feedHoursWindow;
 
     @Autowired
     public ArticleService(ArticleRepository articleRepository, UserRepository userRepository) {
@@ -43,7 +42,7 @@ public class ArticleService {
                 .collect(Collectors.toList());
     }
 
-    // Legacy non-paginated fetch (can keep or deprecate later)
+    // Legacy non-paginated
     public List<ArticleDto> getAllArticles(List<Long> categoryIds, List<Long> sourceIds, String keyword, LocalDate date) {
         Specification<Article> spec = Specification.where(ArticleSpecification.hasKeyword(keyword))
                 .and(ArticleSpecification.hasCategories(categoryIds))
@@ -51,23 +50,16 @@ public class ArticleService {
                 .and(ArticleSpecification.hasDate(date));
 
         List<Article> articles = articleRepository.findAll(spec, Sort.by(Sort.Direction.DESC, "publishedAt"));
-
-        return articles.stream()
-                .map(this::mapToDto)
-                .collect(Collectors.toList());
+        return articles.stream().map(this::mapToDto).collect(Collectors.toList());
     }
 
-    // Legacy non-paginated feed (can keep or deprecate later)
+    // Legacy non-paginated feed
     public List<ArticleDto> getForYouFeed(UserDetails userDetails) {
         User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        List<Long> preferredCategoryIds = user.getPreferredCategories().stream()
-                .map(Category::getId)
-                .collect(Collectors.toList());
-        List<Long> preferredSourceIds = user.getPreferredSources().stream()
-                .map(Source::getId)
-                .collect(Collectors.toList());
+        List<Long> preferredCategoryIds = user.getPreferredCategories().stream().map(Category::getId).toList();
+        List<Long> preferredSourceIds = user.getPreferredSources().stream().map(Source::getId).toList();
 
         if (preferredCategoryIds.isEmpty() && preferredSourceIds.isEmpty()) {
             return Collections.emptyList();
@@ -75,13 +67,64 @@ public class ArticleService {
 
         Specification<Article> spec = Specification.where(ArticleSpecification.hasCategories(preferredCategoryIds))
                 .and(ArticleSpecification.hasSources(preferredSourceIds))
-                .and(ArticleSpecification.isWithinLast24Hours());
+                .and(ArticleSpecification.publishedWithinLastHours(feedHoursWindow)); // 👈 uses env-based hours
 
         List<Article> articles = articleRepository.findAll(spec, Sort.by(Sort.Direction.DESC, "publishedAt"));
+        return articles.stream().map(this::mapToDto).collect(Collectors.toList());
+    }
 
-        return articles.stream()
-                .map(this::mapToDto)
-                .collect(Collectors.toList());
+    // Pagination All Articles
+    public PagedResponse<ArticleDto> getAllArticles(List<Long> categoryIds,
+                                                    List<Long> sourceIds,
+                                                    String keyword,
+                                                    LocalDate date,
+                                                    int page,
+                                                    int size) {
+        Pageable pageable = PageRequest.of(page > 0 ? page - 1 : 0, size, Sort.by(Sort.Direction.DESC, "publishedAt"));
+        Specification<Article> spec = Specification.where(ArticleSpecification.hasKeyword(keyword))
+                .and(ArticleSpecification.hasCategories(categoryIds))
+                .and(ArticleSpecification.hasSources(sourceIds))
+                .and(ArticleSpecification.hasDate(date));
+
+        Page<Article> articlePage = articleRepository.findAll(spec, pageable);
+        List<ArticleDto> dtos = articlePage.getContent().stream().map(this::mapToDto).toList();
+
+        return new PagedResponse<>(
+                dtos,
+                articlePage.getNumber() + 1,
+                articlePage.getTotalPages(),
+                articlePage.getTotalElements(),
+                articlePage.getSize()
+        );
+    }
+
+    // Pagination For You Feed
+    public PagedResponse<ArticleDto> getForYouFeed(UserDetails userDetails, int page, int size) {
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        List<Long> preferredCategoryIds = user.getPreferredCategories().stream().map(Category::getId).toList();
+        List<Long> preferredSourceIds = user.getPreferredSources().stream().map(Source::getId).toList();
+
+        if (preferredCategoryIds.isEmpty() && preferredSourceIds.isEmpty()) {
+            return new PagedResponse<>(Collections.emptyList(), page, 0, 0, size);
+        }
+
+        Pageable pageable = PageRequest.of(page > 0 ? page - 1 : 0, size, Sort.by(Sort.Direction.DESC, "publishedAt"));
+        Specification<Article> spec = Specification.where(ArticleSpecification.hasCategories(preferredCategoryIds))
+                .and(ArticleSpecification.hasSources(preferredSourceIds))
+                .and(ArticleSpecification.publishedWithinLastHours(feedHoursWindow)); // 👈 uses env-based hours
+
+        Page<Article> articlePage = articleRepository.findAll(spec, pageable);
+        List<ArticleDto> dtos = articlePage.getContent().stream().map(this::mapToDto).toList();
+
+        return new PagedResponse<>(
+                dtos,
+                articlePage.getNumber() + 1,
+                articlePage.getTotalPages(),
+                articlePage.getTotalElements(),
+                articlePage.getSize()
+        );
     }
 
     private ArticleDto mapToDto(Article article) {
@@ -91,82 +134,8 @@ public class ArticleService {
                 article.getSummary(),
                 article.getImageUrl(),
                 article.getPublishedAt(),
-                article.getSources().stream().map(Source::getName).collect(Collectors.toList()),
-                article.getCategories().stream().map(Category::getName).collect(Collectors.toList())
-        );
-    }
-
-    // ✅ Paginated All Articles
-    public PagedResponse<ArticleDto> getAllArticles(List<Long> categoryIds,
-                                                    List<Long> sourceIds,
-                                                    String keyword,
-                                                    LocalDate date,
-                                                    int page,
-                                                    int size) {
-        Pageable pageable = PageRequest.of(
-                page > 0 ? page - 1 : 0,   // shift FE 1-based → BE 0-based
-                size,
-                Sort.by(Sort.Direction.DESC, "publishedAt")
-        );
-
-        Specification<Article> spec = Specification.where(ArticleSpecification.hasKeyword(keyword))
-                .and(ArticleSpecification.hasCategories(categoryIds))
-                .and(ArticleSpecification.hasSources(sourceIds))
-                .and(ArticleSpecification.hasDate(date));
-
-        Page<Article> articlePage = articleRepository.findAll(spec, pageable);
-
-        List<ArticleDto> dtos = articlePage.getContent().stream()
-                .map(this::mapToDto)
-                .collect(Collectors.toList());
-
-        return new PagedResponse<>(
-                dtos,
-                articlePage.getNumber() + 1, // return 1-based page
-                articlePage.getTotalPages(),
-                articlePage.getTotalElements(),
-                articlePage.getSize()
-        );
-    }
-
-    // ✅ Paginated For You Feed
-    public PagedResponse<ArticleDto> getForYouFeed(UserDetails userDetails, int page, int size) {
-        User user = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        List<Long> preferredCategoryIds = user.getPreferredCategories().stream()
-                .map(Category::getId)
-                .collect(Collectors.toList());
-        List<Long> preferredSourceIds = user.getPreferredSources().stream()
-                .map(Source::getId)
-                .collect(Collectors.toList());
-
-        if (preferredCategoryIds.isEmpty() && preferredSourceIds.isEmpty()) {
-            return new PagedResponse<>(Collections.emptyList(), page, 0, 0, size);
-        }
-
-        Pageable pageable = PageRequest.of(
-                page > 0 ? page - 1 : 0,   // shift FE 1-based → BE 0-based
-                size,
-                Sort.by(Sort.Direction.DESC, "publishedAt")
-        );
-
-        Specification<Article> spec = Specification.where(ArticleSpecification.hasCategories(preferredCategoryIds))
-                .and(ArticleSpecification.hasSources(preferredSourceIds))
-                .and(ArticleSpecification.isWithinLast24Hours());
-
-        Page<Article> articlePage = articleRepository.findAll(spec, pageable);
-
-        List<ArticleDto> dtos = articlePage.getContent().stream()
-                .map(this::mapToDto)
-                .collect(Collectors.toList());
-
-        return new PagedResponse<>(
-                dtos,
-                articlePage.getNumber() + 1, // return 1-based page
-                articlePage.getTotalPages(),
-                articlePage.getTotalElements(),
-                articlePage.getSize()
+                article.getSources().stream().map(Source::getName).toList(),
+                article.getCategories().stream().map(Category::getName).toList()
         );
     }
 }
