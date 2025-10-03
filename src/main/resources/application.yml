@@ -32,6 +32,16 @@ management:
 logging:
   level:
     org.springframework.security: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
 
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS}
+
+newsapi:
+  url: https://newsapi.org/v2
+  apiKey: ${NEWS_API_KEY}
+  query: (sustainability OR climate OR renewable OR environment OR ESG OR carbon)
+  sortBy: publishedAt
+  language: en
+  pageSize: 50
+
