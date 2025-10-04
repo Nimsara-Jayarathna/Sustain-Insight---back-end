@@ -27,19 +27,29 @@ Configuration is **environment-driven** (`.env` + `application.yml`), keeping se
 
 ## ⚙️ Environment Setup
 
-Run the following command depending on your platform, replacing placeholders (`<VALUE>`) with your actual Neon credentials and settings:
+Run the following command depending on your platform, replacing placeholders "< VALUES >" with your actual configuration values.
+These include database (Neon), server, CORS, pagination, and news fetching settings.
 
 ### macOS / Linux (bash/zsh)
 
 ```bash
-export PGHOST=<your-neon-host>
-export PGPORT=<your-port>
-export PGDATABASE=<your-database>
-export PGUSER=<your-username>
-export PGPASSWORD=<your-password>
+export PGHOST= <your-neon-host>
+export PGPORT= <your-port>
+export PGDATABASE= <your-database>
+export PGUSER= <your-username>
+export PGPASSWORD= <your-password>
 
 export SERVER_PORT=8080
 export CORS_ALLOWED_ORIGINS=http://localhost:5173,https://sustain-insight-front-end.vercel.app
+
+export NEWS_API_KEY= <your-news-api-key>
+export FEED_HOURS_WINDOW= 24
+export PAGINATION_DEFAULT_SIZE= 9
+export PAGINATION_MAX_SIZE= 50
+export LATEST_DEFAULT_LIMIT= 5
+export LATEST_MAX_LIMIT= 20
+export NEWS_FETCHING_ENABLED= false
+
 ```
 
 ### Windows (PowerShell)
@@ -53,6 +63,15 @@ setx PGPASSWORD "<your-password>"
 
 setx SERVER_PORT "8080"
 setx CORS_ALLOWED_ORIGINS "http://localhost:5173,https://sustain-insight-front-end.vercel.app"
+
+setx NEWS_API_KEY "<your-news-api-key>"
+setx FEED_HOURS_WINDOW "24"
+setx PAGINATION_DEFAULT_SIZE "9"
+setx PAGINATION_MAX_SIZE "50"
+setx LATEST_DEFAULT_LIMIT "5"
+setx LATEST_MAX_LIMIT "20"
+setx NEWS_FETCHING_ENABLED "false"
+
 ```
 
 Spring Boot automatically maps these environment variables into `application.yml`.
