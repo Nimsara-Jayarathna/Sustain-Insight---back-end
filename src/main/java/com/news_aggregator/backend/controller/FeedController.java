@@ -23,13 +23,13 @@ public class FeedController {
     @Value("${pagination.maxSize:50}")       // 👈 from env, fallback = 50
     private int maxPageSize;
 
-    @GetMapping("/feed")
-    public ResponseEntity<PagedResponse<ArticleDto>> getForYouFeed(
-            @AuthenticationPrincipal UserDetails userDetails,
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(required = false) Integer size
-    ) {
-        int pageSize = (size == null || size <= 0) ? defaultPageSize : Math.min(size, maxPageSize);
-        return ResponseEntity.ok(articleService.getForYouFeed(userDetails, page, pageSize));
-    }
+    // @GetMapping("/feed")
+    // public ResponseEntity<PagedResponse<ArticleDto>> getForYouFeed(
+    //         @AuthenticationPrincipal UserDetails userDetails,
+    //         @RequestParam(defaultValue = "1") int page,
+    //         @RequestParam(required = false) Integer size
+    // ) {
+    //     int pageSize = (size == null || size <= 0) ? defaultPageSize : Math.min(size, maxPageSize);
+    //     return ResponseEntity.ok(articleService.getForYouFeed(userDetails, page, pageSize));
+    // }
 }
