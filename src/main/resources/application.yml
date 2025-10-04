@@ -57,3 +57,6 @@ articles:
   latest:
     defaultLimit: ${LATEST_DEFAULT_LIMIT:9}
     maxLimit: ${LATEST_MAX_LIMIT:50} # maximum allowed size per page
+
+fetching:
+  enabled: ${NEWS_FETCHING_ENABLED}

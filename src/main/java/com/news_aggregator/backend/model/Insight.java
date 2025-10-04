@@ -6,27 +6,21 @@ import lombok.*;
 import java.time.OffsetDateTime;
 
 @Entity
-@Table(
-    name = "bookmarks",
-    uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"user_id", "article_id"})
-    }
-)
+@Table(name = "insights")
+@IdClass(InsightId.class)
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Bookmark {
+public class Insight {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @Id
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "article_id", nullable = false)
     private Article article;

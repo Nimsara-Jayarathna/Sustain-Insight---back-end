@@ -26,6 +26,7 @@ public class ArticleService {
     private final ArticleRepository articleRepository;
     private final UserRepository userRepository;
     private final BookmarkRepository bookmarkRepository;
+    private final InsightService insightService;
 
     @Value("${feed.hoursWindow}")   // configurable via env
     private int feedHoursWindow;
@@ -33,55 +34,56 @@ public class ArticleService {
     @Autowired
     public ArticleService(ArticleRepository articleRepository,
                           UserRepository userRepository,
-                          BookmarkRepository bookmarkRepository) {
+                          BookmarkRepository bookmarkRepository,
+                          InsightService insightService) {
         this.articleRepository = articleRepository;
         this.userRepository = userRepository;
         this.bookmarkRepository = bookmarkRepository;
+        this.insightService = insightService;
     }
 
     // 🔹 Latest Articles (no pagination, no user context)
     public List<ArticleDto> getLatestArticles(int limit) {
         List<Article> articles = articleRepository.findTopNArticles(limit);
         return articles.stream()
-                .map(article -> mapToDto(article, false)) // no user = no bookmark state
+                .map(article -> mapToDto(article, null)) // no user context
                 .collect(Collectors.toList());
     }
 
+    // 🔹 All Articles (public, no user context)
     public PagedResponse<ArticleDto> getAllArticles(
-        List<Long> categoryIds,
-        List<Long> sourceIds,
-        String keyword,
-        LocalDate date,
-        int page,
-        int size
-) {
-    Pageable pageable = PageRequest.of(page > 0 ? page - 1 : 0, size, Sort.by(Sort.Direction.DESC, "publishedAt"));
-    Specification<Article> spec = Specification.where(ArticleSpecification.hasKeyword(keyword))
-            .and(ArticleSpecification.hasCategories(categoryIds))
-            .and(ArticleSpecification.hasSources(sourceIds))
-            .and(ArticleSpecification.hasDate(date));
+            List<Long> categoryIds,
+            List<Long> sourceIds,
+            String keyword,
+            LocalDate date,
+            int page,
+            int size
+    ) {
+        Pageable pageable = PageRequest.of(page > 0 ? page - 1 : 0, size, Sort.by(Sort.Direction.DESC, "publishedAt"));
+        Specification<Article> spec = Specification.where(ArticleSpecification.hasKeyword(keyword))
+                .and(ArticleSpecification.hasCategories(categoryIds))
+                .and(ArticleSpecification.hasSources(sourceIds))
+                .and(ArticleSpecification.hasDate(date));
 
-    Page<Article> articlePage = articleRepository.findAll(spec, pageable);
+        Page<Article> articlePage = articleRepository.findAll(spec, pageable);
 
-    List<ArticleDto> dtos = articlePage.getContent().stream()
-            .map(article -> mapToDto(article, false))
-            .toList();
+        List<ArticleDto> dtos = articlePage.getContent().stream()
+                .map(article -> mapToDto(article, null)) // no user = no personal bookmark/insight
+                .toList();
 
-    return new PagedResponse<>(
-            dtos,
-            articlePage.getNumber() + 1,      // ✅ convert to 1-based index
-            articlePage.getSize(),
-            articlePage.getTotalElements(),
-            articlePage.getTotalPages(),
-            articlePage.isLast()
-    );
-}
-
+        return new PagedResponse<>(
+                dtos,
+                articlePage.getNumber() + 1,  // convert to 1-based
+                articlePage.getSize(),
+                articlePage.getTotalElements(),
+                articlePage.getTotalPages(),
+                articlePage.isLast()
+        );
+    }
 
     // 🔹 Legacy non-paginated feed (user-specific)
     public List<ArticleDto> getForYouFeed(UserDetails userDetails) {
-        User user = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = getUser(userDetails);
 
         List<Long> preferredCategoryIds = user.getPreferredCategories().stream().map(Category::getId).toList();
         List<Long> preferredSourceIds = user.getPreferredSources().stream().map(Source::getId).toList();
@@ -96,18 +98,12 @@ public class ArticleService {
 
         List<Article> articles = articleRepository.findAll(spec, Sort.by(Sort.Direction.DESC, "publishedAt"));
 
-        // fetch bookmarked IDs for this user
-        Set<Long> bookmarkedIds = bookmarkRepository.findAllByUserId(user.getId())
-                .stream()
-                .map(b -> b.getArticle().getId())
-                .collect(Collectors.toSet());
-
         return articles.stream()
-                .map(article -> mapToDto(article, bookmarkedIds.contains(article.getId())))
+                .map(article -> mapToDto(article, user))
                 .collect(Collectors.toList());
     }
 
-    // 🔹 Pagination: All Articles
+    // 🔹 Pagination: All Articles (user-specific if logged in)
     public PagedResponse<ArticleDto> getAllArticles(List<Long> categoryIds,
                                                     List<Long> sourceIds,
                                                     String keyword,
@@ -123,11 +119,10 @@ public class ArticleService {
 
         Page<Article> articlePage = articleRepository.findAll(spec, pageable);
 
-        // check bookmarks if user logged in
-        Set<Long> bookmarkedIds = getBookmarkedIds(userDetails);
+        User user = userDetails != null ? getUser(userDetails) : null;
 
         List<ArticleDto> dtos = articlePage.getContent().stream()
-                .map(article -> mapToDto(article, bookmarkedIds.contains(article.getId())))
+                .map(article -> mapToDto(article, user))
                 .toList();
 
         return new PagedResponse<>(
@@ -140,10 +135,9 @@ public class ArticleService {
         );
     }
 
-    // 🔹 Pagination: For You Feed
+    // 🔹 Pagination: For You Feed (user-specific)
     public PagedResponse<ArticleDto> getForYouFeed(UserDetails userDetails, int page, int size) {
-        User user = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = getUser(userDetails);
 
         List<Long> preferredCategoryIds = user.getPreferredCategories().stream().map(Category::getId).toList();
         List<Long> preferredSourceIds = user.getPreferredSources().stream().map(Source::getId).toList();
@@ -159,10 +153,8 @@ public class ArticleService {
 
         Page<Article> articlePage = articleRepository.findAll(spec, pageable);
 
-        Set<Long> bookmarkedIds = getBookmarkedIds(userDetails);
-
         List<ArticleDto> dtos = articlePage.getContent().stream()
-                .map(article -> mapToDto(article, bookmarkedIds.contains(article.getId())))
+                .map(article -> mapToDto(article, user))
                 .toList();
 
         return new PagedResponse<>(
@@ -177,19 +169,21 @@ public class ArticleService {
 
     // --- Helpers ---
 
-    private Set<Long> getBookmarkedIds(UserDetails userDetails) {
-        if (userDetails == null) {
-            return Collections.emptySet();
-        }
-        User user = userRepository.findByEmail(userDetails.getUsername())
+    private User getUser(UserDetails userDetails) {
+        return userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        return bookmarkRepository.findAllByUserId(user.getId())
-                .stream()
-                .map(b -> b.getArticle().getId())
-                .collect(Collectors.toSet());
     }
 
-    private ArticleDto mapToDto(Article article, boolean bookmarked) {
+    public ArticleDto mapToDto(Article article, User user) {
+        boolean bookmarked = false;
+        boolean insighted = false;
+        long insightCount = insightService.getCount(article);
+
+        if (user != null) {
+            bookmarked = bookmarkRepository.existsByUser_IdAndArticle_Id(user.getId(), article.getId());
+            insighted = insightService.isInsighted(user, article);
+        }
+
         return new ArticleDto(
                 article.getId(),
                 article.getTitle(),
@@ -198,7 +192,14 @@ public class ArticleService {
                 article.getPublishedAt(),
                 article.getSources().stream().map(Source::getName).toList(),
                 article.getCategories().stream().map(Category::getName).toList(),
-                bookmarked
+                bookmarked,
+                insighted,
+                insightCount
         );
+    }
+
+    public Article getArticleEntity(Long articleId) {
+        return articleRepository.findById(articleId)
+            .orElseThrow(() -> new RuntimeException("Article not found"));
     }
 }
