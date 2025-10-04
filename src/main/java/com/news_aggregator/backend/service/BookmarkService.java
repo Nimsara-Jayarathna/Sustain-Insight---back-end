@@ -22,6 +22,7 @@ public class BookmarkService {
 
     private final BookmarkRepository bookmarkRepository;
     private final ArticleRepository articleRepository;
+    private final InsightService insightService;  // ✅ inject insight service
 
     @Value("${pagination.defaultSize:10}")
     private int defaultPageSize;
@@ -33,7 +34,7 @@ public class BookmarkService {
      * Add a bookmark for this user and article
      */
     public void addBookmark(User user, Long articleId) {
-        if (bookmarkRepository.existsByUserIdAndArticleId(user.getId(), articleId)) {
+        if (bookmarkRepository.existsByUser_IdAndArticle_Id(user.getId(), articleId)) {
             return; // Already bookmarked
         }
 
@@ -47,7 +48,6 @@ public class BookmarkService {
             .build();
 
         bookmarkRepository.save(bookmark);
-
     }
 
     /**
@@ -55,39 +55,40 @@ public class BookmarkService {
      */
     @Transactional
     public void removeBookmark(User user, Long articleId) {
-        bookmarkRepository.deleteByUserIdAndArticleId(user.getId(), articleId);
+        bookmarkRepository.deleteByUser_IdAndArticle_Id(user.getId(), articleId);
     }
 
     /**
      * Get all bookmarks for a user (paginated)
      */
     public PagedResponse<ArticleDto> getBookmarks(User user, int page, int size) {
-    int pageIndex = page > 0 ? page - 1 : 0; // ✅ convert FE 1-based → Spring 0-based
-    Pageable pageable = PageRequest.of(pageIndex, size, Sort.by("createdAt").descending());
+        int pageIndex = page > 0 ? page - 1 : 0; // ✅ FE 1-based → Spring 0-based
+        Pageable pageable = PageRequest.of(pageIndex, size, Sort.by("createdAt").descending());
 
-    Page<Bookmark> bookmarks = bookmarkRepository.findAllByUserId(user.getId(), pageable);
+        Page<Bookmark> bookmarks = bookmarkRepository.findAllByUser_Id(user.getId(), pageable);
 
-    List<ArticleDto> articles = bookmarks.getContent().stream()
-            .map(b -> new ArticleDto(
-                    b.getArticle().getId(),
-                    b.getArticle().getTitle(),
-                    b.getArticle().getSummary(),
-                    b.getArticle().getImageUrl(),
-                    b.getArticle().getPublishedAt(),
-                    b.getArticle().getSources().stream().map(s -> s.getName()).toList(),
-                    b.getArticle().getCategories().stream().map(c -> c.getName()).toList(),
-                    true
-            ))
-            .toList();
+        List<ArticleDto> articles = bookmarks.getContent().stream()
+                .map(b -> new ArticleDto(
+                        b.getArticle().getId(),
+                        b.getArticle().getTitle(),
+                        b.getArticle().getSummary(),
+                        b.getArticle().getImageUrl(),
+                        b.getArticle().getPublishedAt(),
+                        b.getArticle().getSources().stream().map(s -> s.getName()).toList(),
+                        b.getArticle().getCategories().stream().map(c -> c.getName()).toList(),
+                        true, // bookmarked
+                        insightService.isInsighted(user, b.getArticle()),
+                        insightService.getCount(b.getArticle())
+                ))
+                .toList();
 
-    return new PagedResponse<>(
-            articles,
-            bookmarks.getNumber() + 1,   // ✅ convert back to 1-based for FE
-            bookmarks.getSize(),
-            bookmarks.getTotalElements(),
-            bookmarks.getTotalPages(),
-            bookmarks.isLast()
-    );
-}
-
+        return new PagedResponse<>(
+                articles,
+                bookmarks.getNumber() + 1,   // ✅ convert back to 1-based
+                bookmarks.getSize(),
+                bookmarks.getTotalElements(),
+                bookmarks.getTotalPages(),
+                bookmarks.isLast()
+        );
+    }
 }
