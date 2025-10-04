@@ -12,18 +12,15 @@ import java.util.Optional;
 @Repository
 public interface BookmarkRepository extends JpaRepository<Bookmark, Long> {
 
-    // 🔹 Check if a bookmark exists
-    boolean existsByUserIdAndArticleId(Long userId, Long articleId);
+    // Must match field names in Bookmark.java (user, article)
+    boolean existsByUser_IdAndArticle_Id(Long userId, Long articleId);
 
-    // 🔹 Find a specific bookmark (for toggle or debugging)
-    Optional<Bookmark> findByUserIdAndArticleId(Long userId, Long articleId);
+    Optional<Bookmark> findByUser_IdAndArticle_Id(Long userId, Long articleId);
 
-    // 🔹 Delete bookmark by user + article
-    void deleteByUserIdAndArticleId(Long userId, Long articleId);
+    void deleteByUser_IdAndArticle_Id(Long userId, Long articleId);
 
-    // 🔹 Get all bookmarks for a user (paginated)
-    Page<Bookmark> findAllByUserId(Long userId, Pageable pageable);
+    Page<Bookmark> findAllByUser_Id(Long userId, Pageable pageable);
 
-    // 🔹 Get all bookmarks for a user (non-paginated)
-    List<Bookmark> findAllByUserId(Long userId);
+    List<Bookmark> findAllByUser_Id(Long userId);
 }
+
