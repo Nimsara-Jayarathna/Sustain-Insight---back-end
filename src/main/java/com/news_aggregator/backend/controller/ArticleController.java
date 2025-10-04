@@ -46,19 +46,20 @@ public class ArticleController {
 
     @GetMapping(value = "/all", produces = "application/json")
     public ResponseEntity<PagedResponse<ArticleDto>> getAllArticles(
-            @RequestParam(required = false, name = "category") List<Long> categoryIds,
-            @RequestParam(required = false, name = "source") List<Long> sourceIds,
-            @RequestParam(required = false, name = "search") String keyword,
-            @RequestParam(required = false, name = "date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(required = false) Integer size
+        @RequestParam(required = false, name = "category") List<Long> categoryIds,
+        @RequestParam(required = false, name = "source") List<Long> sourceIds,
+        @RequestParam(required = false, name = "search") String keyword,
+        @RequestParam(required = false, name = "date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+        @RequestParam(defaultValue = "1") int page,
+        @RequestParam(required = false) Integer size
     ) {
         int pageSize = (size == null || size <= 0)
-                ? defaultPageSize
-                : Math.min(size, maxPageSize);
+            ? defaultPageSize
+            : Math.min(size, maxPageSize);
 
         return ResponseEntity.ok(articleService.getAllArticles(
-                categoryIds, sourceIds, keyword, date, page, pageSize
+            categoryIds, sourceIds, keyword, date, page, pageSize
         ));
-    }
+}
+
 }
