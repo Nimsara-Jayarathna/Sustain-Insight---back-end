@@ -116,6 +116,7 @@ public class AuthController {
         }
     }
 
+    // ✅ FORGOT PASSWORD (prevents spam + enforces cooldown)
 @PostMapping("/forgot-password")
 public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> body) {
     try {
@@ -159,7 +160,7 @@ public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> body) {
 
         // 🧩 Generate new token valid for 10 minutes
         String resetToken = UUID.randomUUID().toString();
-        PasswordResetToken token = new PasswordResetToken(resetToken, user, LocalDateTime.now().plusMinutes(10));
+        PasswordResetToken token = new PasswordResetToken(resetToken, user, LocalDateTime.now().plusMinutes(1));
         tokenRepository.save(token);
 
         String resetLink = frontendUrl + "/reset-password?token=" + resetToken;
@@ -182,6 +183,7 @@ public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> body) {
         );
     }
 }
+
 
     // 🔹 RESET PASSWORD
     @PostMapping("/reset-password")
@@ -217,6 +219,7 @@ public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> body) {
                 );
             }
 
+            // ✅ Update correct user password
             User user = resetToken.getUser();
             user.setPasswordHash(passwordEncoder.encode(newPassword));
             userRepository.save(user);
