@@ -1,60 +1,100 @@
 package com.news_aggregator.backend.service;
 
-import com.news_aggregator.backend.model.ArticleInsight;
 import com.news_aggregator.backend.model.Article;
+import com.news_aggregator.backend.model.ArticleInsight;
 import com.news_aggregator.backend.model.Insight;
 import com.news_aggregator.backend.model.User;
 import com.news_aggregator.backend.repository.ArticleInsightRepository;
 import com.news_aggregator.backend.repository.InsightRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 
+/**
+ * Handles creation, removal, and tracking of article insights.
+ * Maintains a cached count per article in the "article_insights" table.
+ */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class InsightService {
 
     private final InsightRepository insightRepository;
     private final ArticleInsightRepository articleInsightRepository;
 
+    /**
+     * 🔹 Adds a new insight (view/action) for a given user and article.
+     * Ensures no duplicates and updates cached count atomically.
+     */
     @Transactional
     public void addInsight(User user, Article article) {
-        if (!insightRepository.existsByUser_IdAndArticle_Id(user.getId(), article.getId())) {
-            Insight insight = Insight.builder()
-                    .user(user)
-                    .article(article)
-                    .createdAt(OffsetDateTime.now())
-                    .build();
-            insightRepository.save(insight);
-            updateCount(article.getId(), +1);
+        if (article == null || article.getId() == null || user == null) return;
+
+        // Skip duplicate insights
+        if (insightRepository.existsByUser_IdAndArticle_Id(user.getId(), article.getId())) {
+            log.debug("Insight already exists for user {} and article {}", user.getId(), article.getId());
+            return;
         }
+
+        // Save new insight record (user_id + article_id composite PK)
+        Insight insight = Insight.builder()
+                .user(user)
+                .article(article)
+                .createdAt(OffsetDateTime.now())
+                .build();
+        insightRepository.save(insight);
+
+        // Increment cached count (create row if missing)
+        updateCount(article.getId(), +1);
+        log.debug("Insight added: article={}, user={}", article.getId(), user.getId());
     }
 
+    /**
+     * 🔹 Removes an existing insight and decrements cached count.
+     */
     @Transactional
     public void removeInsight(User user, Article article) {
+        if (article == null || article.getId() == null || user == null) return;
+
         if (insightRepository.existsByUser_IdAndArticle_Id(user.getId(), article.getId())) {
             insightRepository.deleteByUser_IdAndArticle_Id(user.getId(), article.getId());
             updateCount(article.getId(), -1);
+            log.debug("Insight removed: article={}, user={}", article.getId(), user.getId());
         }
     }
 
+    /**
+     * 🔹 Checks if a user has already viewed/insighted an article.
+     */
     public boolean isInsighted(User user, Article article) {
+        if (article == null || article.getId() == null || user == null) return false;
         return insightRepository.existsByUser_IdAndArticle_Id(user.getId(), article.getId());
     }
 
+    /**
+     * 🔹 Returns total cached insights for an article.
+     */
     public long getCount(Article article) {
+        if (article == null || article.getId() == null) return 0L;
         return articleInsightRepository.findById(article.getId())
                 .map(ArticleInsight::getInsightCount)
                 .orElse(0L);
     }
 
+    /**
+     * 🔹 Adjusts cached count in "article_insights" (creates row if missing).
+     * Ensures count never drops below zero.
+     */
     private void updateCount(Long articleId, int delta) {
         ArticleInsight ai = articleInsightRepository.findById(articleId)
                 .orElseGet(() -> new ArticleInsight(articleId, 0L));
+
         long newCount = ai.getInsightCount() + delta;
         ai.setInsightCount(Math.max(0, newCount));
+
         articleInsightRepository.save(ai);
     }
 }

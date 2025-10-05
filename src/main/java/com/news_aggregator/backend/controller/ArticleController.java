@@ -20,23 +20,26 @@ public class ArticleController {
     private final ArticleService articleService;
 
     // 🔹 Pagination settings
-    @Value("${pagination.defaultSize:10}")   // default page size
+    @Value("${pagination.defaultSize:10}")
     private int defaultPageSize;
 
-    @Value("${pagination.maxSize:50}")       // max allowed page size
+    @Value("${pagination.maxSize:50}")
     private int maxPageSize;
 
     // 🔹 "latest articles" limit
-    @Value("${articles.latest.defaultLimit:9}")  // fallback = 9
+    @Value("${articles.latest.defaultLimit:9}")
     private int latestDefaultLimit;
 
-    @Value("${articles.latest.maxLimit:50}")     // fallback = 50
+    @Value("${articles.latest.maxLimit:50}")
     private int latestMaxLimit;
 
+    // =====================================================
+    // 🔹 Get Latest Articles (for homepage, highlights, etc.)
+    // =====================================================
     @GetMapping(value = "/latest", produces = "application/json")
     public ResponseEntity<List<ArticleDto>> getLatestArticles(
-            @RequestParam(required = false) Integer limit) {
-
+            @RequestParam(required = false) Integer limit
+    ) {
         int effectiveLimit = (limit == null || limit <= 0)
                 ? latestDefaultLimit
                 : Math.min(limit, latestMaxLimit);
@@ -44,22 +47,26 @@ public class ArticleController {
         return ResponseEntity.ok(articleService.getLatestArticles(effectiveLimit));
     }
 
+    // =====================================================
+    // 🔹 Get All Articles (Public: supports sorting)
+    // =====================================================
     @GetMapping(value = "/all", produces = "application/json")
     public ResponseEntity<PagedResponse<ArticleDto>> getAllArticles(
-        @RequestParam(required = false, name = "category") List<Long> categoryIds,
-        @RequestParam(required = false, name = "source") List<Long> sourceIds,
-        @RequestParam(required = false, name = "search") String keyword,
-        @RequestParam(required = false, name = "date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-        @RequestParam(defaultValue = "1") int page,
-        @RequestParam(required = false) Integer size
+            @RequestParam(required = false, name = "category") List<Long> categoryIds,
+            @RequestParam(required = false, name = "source") List<Long> sourceIds,
+            @RequestParam(required = false, name = "search") String keyword,
+            @RequestParam(required = false, name = "date")
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false, name = "sort", defaultValue = "newest") String sort
     ) {
         int pageSize = (size == null || size <= 0)
-            ? defaultPageSize
-            : Math.min(size, maxPageSize);
+                ? defaultPageSize
+                : Math.min(size, maxPageSize);
 
         return ResponseEntity.ok(articleService.getAllArticles(
-            categoryIds, sourceIds, keyword, date, page, pageSize
+                categoryIds, sourceIds, keyword, date, page, pageSize, sort
         ));
-}
-
+    }
 }
