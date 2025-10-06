@@ -108,7 +108,7 @@ public class AccountController {
         return ResponseEntity.ok(Map.of("verified", true, "message", "Password verified successfully."));
     }
 
-    @PutMapping("/api/change-password")
+    @PutMapping("/change-password")
     @Transactional
     public ResponseEntity<?> changePassword(
             @AuthenticationPrincipal UserDetails userDetails,
