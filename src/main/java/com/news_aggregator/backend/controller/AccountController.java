@@ -11,6 +11,9 @@ import com.news_aggregator.backend.payload.VerifyPasswordRequest;
 import com.news_aggregator.backend.repository.CategoryRepository;
 import com.news_aggregator.backend.repository.SourceRepository;
 import com.news_aggregator.backend.repository.UserRepository;
+import com.news_aggregator.backend.service.EmailService;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -31,6 +34,9 @@ public class AccountController {
     private final CategoryRepository categoryRepository;
     private final SourceRepository sourceRepository;
     private final PasswordEncoder passwordEncoder;
+
+
+    @Autowired private EmailService emailService;
 
     public AccountController(UserRepository userRepository,
                              CategoryRepository categoryRepository,
@@ -126,12 +132,11 @@ public class AccountController {
                     new ErrorResponse("INVALID_PASSWORD", "Incorrect password.")
             );
         }
-
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
-
+        emailService.sendPasswordChangeNotification(user.getEmail(), user.getFirstName());
         return ResponseEntity.ok(Map.of("message", "Password changed successfully."));
-    }
+}
 
     private UserDto mapToDto(User user) {
         return new UserDto(
