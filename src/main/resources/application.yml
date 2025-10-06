@@ -7,9 +7,15 @@ spring:
     username: ${PGUSER}
     password: ${PGPASSWORD}
 
+  mail:
+    from: ${MAIL_FROM}   
+
+  resend:
+    api:
+      key: ${RESEND_API_KEY}
   jpa:
     hibernate:
-      ddl-auto: none        
+      ddl-auto: none
       open-in-view: false
     properties:
       hibernate.jdbc.time_zone: UTC
@@ -18,13 +24,13 @@ spring:
     enabled: false
 
 server:
-  port: 8080
+  port: ${PORT:8080}
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info   
+        include: health,info
   endpoint:
     health:
       show-details: always
@@ -46,7 +52,7 @@ newsapi:
   pageSize: 50
 
 feed:
-  hoursWindow: ${FEED_HOURS_WINDOW}   
+  hoursWindow: ${FEED_HOURS_WINDOW}
 
 pagination:
   defaultSize: ${PAGINATION_DEFAULT_SIZE}
@@ -55,7 +61,14 @@ pagination:
 articles:
   latest:
     defaultLimit: ${LATEST_DEFAULT_LIMIT}
-    maxLimit: ${LATEST_MAX_LIMIT} 
+    maxLimit: ${LATEST_MAX_LIMIT}
 
 fetching:
   enabled: ${NEWS_FETCHING_ENABLED}
+
+app:
+  frontend-url: ${FRONTEND_URL}
+  brand:
+    name: ${BRAND_NAME}
+
+

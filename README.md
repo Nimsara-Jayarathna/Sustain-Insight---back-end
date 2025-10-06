@@ -1,105 +1,208 @@
 # 📰 Sustain Insight – Backend
 
-This is the **backend service** for the News Aggregator project.
+This is the **backend service** for the *Sustain Insight News Aggregator* project.
 It is built with **Spring Boot** and uses a **Neon PostgreSQL cloud database** for both development and production.
-Configuration is **environment-driven** (`.env` + `application.yml`), keeping secrets out of the repo.
+Configuration is **environment-driven** (`.env` + `application.yml`), keeping secrets out of the repo and supporting easy deployment.
 
 ---
 
-## ✨ Features
+## ✨ System-Wide Features
 
-* REST API for news articles, categories, sources, bookmarks, and user preferences
-* User authentication with JWT
-* Environment-based config with `.env` and Spring profiles
-* CORS configuration for frontend integration
-* Deployed backend connected to Neon DB (no local DB needed)
+### 🧠 Core Platform
+- Aggregates sustainability, ESG, renewable energy, and climate-related news in real time
+- Integrates with the **News API** for global article sourcing
+- Cleans, categorizes, and stores news with time-based filtering
+- Periodic background jobs fetch new data automatically (`@Scheduled` tasks)
+
+### 🔐 Authentication & Security
+- Secure user authentication using **JWT**
+- Password hashing via **Spring Security**
+- End-to-end **password reset flow** with expiring tokens (auto-cleanup included)
+- HTML-formatted password reset emails with branded templates
+- Email verification and system notifications (SMTP / Mailtrap for dev)
+- CORS restrictions and rate-safe endpoints for production
+
+### 🧾 Articles, Categories & Sources
+- CRUD endpoints for articles, categories, and sources
+- Source & category-based filtering and search
+- Pagination and sorting support (fully backend-driven)
+- `/latest`, `/feed`, and `/all` article endpoints with custom limits
+- Configurable cutoff window via `FEED_HOURS_WINDOW`
+
+### ⭐ Personalization
+- User preference-driven recommendations
+- Personalized "For You" feed based on reading and bookmarking patterns
+- Content relevance logic using category affinity (extendable)
+
+### 🔖 Bookmarks & Saved Articles
+- Add / remove bookmarks per authenticated user
+- Paginated bookmark retrieval with metadata
+- Smart deduplication to prevent duplicate saves
+
+### 📈 Insights & Analytics
+- Article view and engagement tracking (future-ready)
+- Trending sources, popular categories, and most-bookmarked analytics
+- Insights endpoints for dashboard visualization (in progress)
+
+### 🧩 Email & Notification Services
+- SMTP-based email dispatch (Mailtrap for dev, replaceable with SendGrid / SES)
+- Branded HTML templates for password reset and system alerts
+- Configurable sender identity via environment variables
+
+### 🕒 Scheduled Tasks
+- Automated **news fetchers** triggered periodically
+- **Token cleanup scheduler** for removing expired password reset tokens
+- Safe task disabling via `fetching.enabled` flag in `.env`
+
+### ⚙️ Configuration
+- **Environment-driven setup** (`.env` + `application.yml`)
+- No secrets stored in code — only referenced via placeholders
+- Configurable pagination, time windows, and CORS domains
+- Multi-environment compatibility (local / staging / production)
 
 ---
 
 ## 🛠 Tech Stack
 
-* Java 21
-* Spring Boot (Web, Data JPA, Security, Validation, Actuator)
-* PostgreSQL (via Neon)
-* Maven
+| Layer      | Technology                                                        |
+| ---------- | ----------------------------------------------------------------- |
+| Language   | **Java 21**                                                       |
+| Framework  | **Spring Boot 3** (Web, Security, Data JPA, Validation, Actuator) |
+| Database   | **PostgreSQL (Neon Cloud)**                                       |
+| Build Tool | **Maven**                                                         |
+| Email      | **Spring Mail + Mailtrap (Dev)**                                  |
 
 ---
 
 ## ⚙️ Environment Setup
 
-Run the following command depending on your platform, replacing placeholders "< VALUES >" with your actual configuration values.
-These include database (Neon), server, CORS, pagination, and news fetching settings.
+All configuration values are injected from **environment variables**.
+You can define them either via a `.env` file or directly in your terminal.
+Below is the recommended `.env` layout.
 
-### macOS / Linux (bash/zsh)
+### 🧬 `.env` Example (recommended)
 
 ```bash
-export PGHOST= <your-neon-host>
-export PGPORT= <your-port>
-export PGDATABASE= <your-database>
-export PGUSER= <your-username>
-export PGPASSWORD= <your-password>
+# --- DATABASE CONFIGURATION ---
+PGHOST="your-neon-host"
+PGPORT="5432"
+PGDATABASE="your-database"
+PGUSER="your-username"
+PGPASSWORD="your-password"
 
-export SERVER_PORT=8080
-export CORS_ALLOWED_ORIGINS=http://localhost:5173,https://sustain-insight-front-end.vercel.app
+# --- SERVER CONFIGURATION ---
+PORT="8080"
+CORS_ALLOWED_ORIGINS="http://localhost:5173,https://sustain-insight-front-end.vercel.app"
 
-export NEWS_API_KEY= <your-news-api-key>
-export FEED_HOURS_WINDOW= 24
-export PAGINATION_DEFAULT_SIZE= 9
-export PAGINATION_MAX_SIZE= 50
-export LATEST_DEFAULT_LIMIT= 5
-export LATEST_MAX_LIMIT= 20
-export NEWS_FETCHING_ENABLED= false
+# --- NEWS API CONFIGURATION ---
+NEWS_API_KEY="your-newsapi-key"
+NEWS_FETCHING_ENABLED="1"
 
+# --- FEED CONFIGURATION ---
+FEED_HOURS_WINDOW="24"
+
+# --- PAGINATION SETTINGS ---
+PAGINATION_DEFAULT_SIZE="6"
+PAGINATION_MAX_SIZE="12"
+
+# --- LATEST ARTICLES SETTINGS ---
+LATEST_DEFAULT_LIMIT="5"
+LATEST_MAX_LIMIT="6"
+
+# --- FRONTEND LINK ---
+FRONTEND_URL="http://localhost:5173"
+
+# --- MAILTRAP SMTP (DEV MODE) ---
+MAIL_HOST="live.smtp.mailtrap.io"
+MAIL_PORT="587"
+MAIL_USERNAME="your-mailtrap-username"
+MAIL_PASSWORD="your-mailtrap-password"
+MAIL_FROM="no-reply@demomailtrap.co"
+
+# --- BRANDING ---
+BRAND_NAME="Sustain Insight"
 ```
 
-### Windows (PowerShell)
-
-```powershell
-setx PGHOST "<your-neon-host>"
-setx PGPORT "<your-port>"
-setx PGDATABASE "<your-database>"
-setx PGUSER "<your-username>"
-setx PGPASSWORD "<your-password>"
-
-setx SERVER_PORT "8080"
-setx CORS_ALLOWED_ORIGINS "http://localhost:5173,https://sustain-insight-front-end.vercel.app"
-
-setx NEWS_API_KEY "<your-news-api-key>"
-setx FEED_HOURS_WINDOW "24"
-setx PAGINATION_DEFAULT_SIZE "9"
-setx PAGINATION_MAX_SIZE "50"
-setx LATEST_DEFAULT_LIMIT "5"
-setx LATEST_MAX_LIMIT "20"
-setx NEWS_FETCHING_ENABLED "false"
-
-```
-
-Spring Boot automatically maps these environment variables into `application.yml`.
+> ⚠️ **Important:**
+> Do **not** commit your `.env` file — add it to `.gitignore`.
+> Each developer and environment (dev, staging, prod) must maintain its own values.
 
 ---
 
+### 💻 macOS / Linux (bash/zsh)
+
+```bash
+# Load env variables and start Spring Boot
+export $(grep -v '^#' .env | xargs) && mvn spring-boot:run
+```
+
+✅ This automatically exports all variables from `.env` before running the app.
+
+To confirm a variable:
+
+```bash
+echo $PGHOST
+```
+
+---
+
+### 🦠 Windows (PowerShell)
+
+```powershell
+# Load .env into environment
+Get-Content .env | ForEach-Object {
+  if ($_ -match '^(.*?)=(.*)$') {
+    setx $matches[1] $matches[2]
+  }
+}
+
+# Run the backend
+mvn spring-boot:run
+```
+
+Verify a variable:
+
+```powershell
+echo $env:PGHOST
+```
+
+---
+
+### 🧱 Windows (CMD Alternative)
+
+```cmd
+setx PGHOST "your-neon-host"
+setx PGPORT "5432"
+setx PGDATABASE "your-database"
+setx PGUSER "your-username"
+setx PGPASSWORD "your-password"
+mvn spring-boot:run
+```
+
+
+
 ## 🚀 Getting Started
 
-### 1. Clone the repo
+### 1️⃣ Clone the repository
 
 ```bash
 git clone https://github.com/Nimsara-Jayarathna/Sustain-Insight---back-end.git
 cd Sustain-Insight---back-end
 ```
 
-### 2. Install dependencies
+### 2️⃣ Install dependencies
 
 ```bash
 mvn clean install
 ```
 
-### 3. Run the backend
+### 3️⃣ Start the backend
 
 ```bash
-mvn spring-boot:run
+export $(grep -v '^#' .env | xargs) && mvn spring-boot:run
 ```
 
-### 4. Verify health endpoint
+### 4️⃣ Verify API health
 
 ```bash
 curl http://localhost:8080/actuator/health
@@ -110,52 +213,57 @@ curl http://localhost:8080/actuator/health
 
 ## 👥 Collaboration Workflow
 
-* **Feature branches:**
-  Use dedicated branches like:
+* **Feature branches** – use meaningful names:
 
   * `feature/auth`
-  * `feature/articles`
-  * `feature/cors-config`
+  * `feature/news-fetching`
+  * `feature/password-reset`
+* **Development branch (`dev`)**
 
-* **Development branch (`dev`):**
+  * All merges happen here via PRs.
+  * PRs require review and CI pass.
+* **Main branch (`main`)**
 
-  * All work is merged into `dev` via PRs.
-  * Requires review and passing checks.
-  * Acts as the integration branch before production.
+  * Production-ready.
+  * Merges from `dev` after verification.
 
-* **Main branch (`main`):**
+**Branch Protection Rules:**
 
-  * Production-ready branch, directly used for deployment.
-  * PRs from `dev` are squashed and merged into `main`.
-
-* **Branch protections:**
-
-  * PRs required for merges.
-  * No direct commits or force pushes to `main` or `dev`.
-  * Status checks and reviews required.
+* PR required for all merges
+* No direct commits or force pushes
+* All checks must pass
 
 ---
 
-## 📂 Project Structure
+## 🗂️ Directory Structure
 
 ```
 src/main/java/com/news_aggregator/backend
-  ├── config/         # Security & CORS
-  ├── controller/     # REST endpoints
-  ├── model/          # Entities
-  ├── repository/     # JPA repositories
-  ├── service/        # Business logic
-  └── util/           # Helpers (if needed)
+ ├── config/           # Security, CORS
+ ├── controller/       # REST endpoints (Auth, Articles, etc.)
+ ├── model/            # JPA entities
+ ├── repository/       # Data repositories
+ ├── service/          # Business logic (Auth, Email, Token cleanup)
+ └── util/             # Helper utilities
 
 src/main/resources
-  ├── application.yml # Config (reads from env)
+ ├── application.yml   # Reads variables from .env
 ```
 
 ---
 
 ## 🔒 Security Notes
 
-* Secrets are provided via environment variables — never hardcoded.
-* Only placeholder instructions are included in README.
-* Neon DB credentials and JWT secrets must be provided per environment.
-* If secrets are exposed in Git history, rotate them immediately.
+* All credentials are stored in `.env` (never hardcoded)
+* API keys, DB URLs, and JWT secrets should be rotated if exposed
+* Mailtrap and frontend URLs are environment-specific
+* Password reset tokens auto-expire and are cleaned up every hour
+
+---
+
+
+
+## 🦯 License
+
+This project is maintained by the **Sustain Insight Team**.
+© 2025 Sustain Insight. All rights reserved.
