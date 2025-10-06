@@ -4,16 +4,23 @@ import com.news_aggregator.backend.dto.CategoryDto;
 import com.news_aggregator.backend.dto.SourceDto;
 import com.news_aggregator.backend.dto.UserDto;
 import com.news_aggregator.backend.model.User;
+import com.news_aggregator.backend.payload.ChangePasswordRequest;
+import com.news_aggregator.backend.payload.ErrorResponse;
 import com.news_aggregator.backend.payload.PreferenceUpdateRequest;
+import com.news_aggregator.backend.payload.VerifyPasswordRequest;
 import com.news_aggregator.backend.repository.CategoryRepository;
 import com.news_aggregator.backend.repository.SourceRepository;
 import com.news_aggregator.backend.repository.UserRepository;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashSet;
+import java.util.Map; 
 import java.util.stream.Collectors;
 
 @RestController
@@ -23,16 +30,18 @@ public class AccountController {
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
     private final SourceRepository sourceRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public AccountController(UserRepository userRepository,
                              CategoryRepository categoryRepository,
-                             SourceRepository sourceRepository) {
+                             SourceRepository sourceRepository,
+                             PasswordEncoder passwordEncoder) { 
         this.userRepository = userRepository;
         this.categoryRepository = categoryRepository;
         this.sourceRepository = sourceRepository;
+        this.passwordEncoder = passwordEncoder; 
     }
 
-    // ✅ Get logged-in user
     @GetMapping("/me")
     public UserDto getCurrentUser(@AuthenticationPrincipal UserDetails userDetails) {
         if (userDetails == null) throw new RuntimeException("No authenticated user");
@@ -43,7 +52,6 @@ public class AccountController {
         return mapToDto(user);
     }
 
-    // ✅ Update preferences + name
     @PutMapping("/preferences")
     @Transactional
     public UserDto updatePreferences(
@@ -63,7 +71,6 @@ public class AccountController {
             user.setLastName(request.getLastName());
         }
 
-        // Update preferences
         if (request.getCategoryIds() != null) {
             user.setPreferredCategories(
                 new HashSet<>(categoryRepository.findAllById(request.getCategoryIds()))
@@ -75,12 +82,57 @@ public class AccountController {
             );
         }
 
-        userRepository.save(user); // persists changes
+        userRepository.save(user); 
 
         return mapToDto(user);
     }
 
-    // Helper to map entity -> DTO
+    @PostMapping("/verify-password")
+    public ResponseEntity<?> verifyCurrentPassword(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestBody VerifyPasswordRequest request
+    ) {
+        if (userDetails == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse("UNAUTHORIZED", "User not authenticated."));
+        }
+
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found during password verification."));
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
+                    new ErrorResponse("INVALID_PASSWORD", "Incorrect password.")
+            );
+        }
+
+        return ResponseEntity.ok(Map.of("verified", true, "message", "Password verified successfully."));
+    }
+
+    @PutMapping("/change-password")
+    @Transactional
+    public ResponseEntity<?> changePassword(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestBody ChangePasswordRequest request
+    ) {
+        if (userDetails == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponse("UNAUTHORIZED", "User not authenticated."));
+        }
+
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found during password change."));
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
+                    new ErrorResponse("INVALID_PASSWORD", "Incorrect password.")
+            );
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        return ResponseEntity.ok(Map.of("message", "Password changed successfully."));
+    }
+
     private UserDto mapToDto(User user) {
         return new UserDto(
                 user.getId(),
