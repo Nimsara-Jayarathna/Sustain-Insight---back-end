@@ -10,9 +10,6 @@ spring:
   mail:
     from: ${MAIL_FROM}   
 
-  resend:
-    api:
-      key: ${RESEND_API_KEY}
   jpa:
     hibernate:
       ddl-auto: none
@@ -71,4 +68,12 @@ app:
   brand:
     name: ${BRAND_NAME}
 
+google:
+  client:
+    id=: ${GOOGLE_CLIENT_ID}
+    secret: ${GOOGLE_CLIENT_SECRET}
+  refresh:
+    token: ${GOOGLE_REFRESH_TOKEN}
+  sender:
+    email: ${GOOGLE_SENDER_EMAIL}
 
