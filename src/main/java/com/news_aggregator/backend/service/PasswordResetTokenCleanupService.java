@@ -20,7 +20,6 @@ public class PasswordResetTokenCleanupService {
     @Scheduled(cron = "0 * * * * *")
     public void cleanupExpiredTokens() {
         List<PasswordResetToken> expired = tokenRepo.findAllByExpiresAtBefore(LocalDateTime.now());
-        System.out.println("🕒 Cleanup job triggered at: " + LocalDateTime.now());
 
         if (!expired.isEmpty()) {
             tokenRepo.deleteAll(expired);
