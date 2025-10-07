@@ -151,7 +151,17 @@ public class EmailService {
         sendEmail(to, subject, htmlBody);
     }
 
+    // Add this new public method inside your existing EmailService.java
 
+    public void sendAccountVerificationEmail(String to, String firstName, String verificationLink) {
+        String subject = "Verify Your Account – " + brandName;
+        String title = "👋 Welcome! Please Verify Your Email";
+        String message = "Thank you for signing up! To complete your registration and secure your account, please click the button below to verify your email address. This link is valid for 24 hours.";
+        String buttonText = "Verify My Email";
+
+        String htmlBody = createStyledEmailHtml(title, "Hello " + firstName + ",", message, buttonText, verificationLink);
+        sendEmail(to, subject, htmlBody);
+    }
     // =========================================================
     // ============  MASTER EMAIL TEMPLATE BUILDER  ============
     // =========================================================
