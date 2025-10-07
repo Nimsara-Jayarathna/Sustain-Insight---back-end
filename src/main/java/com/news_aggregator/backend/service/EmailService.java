@@ -56,68 +56,123 @@ public class EmailService {
                 .build();
     }
 
-    /**
-     * Sends a password reset link to the user.
-     * @param to The recipient's email.
-     * @param resetLink The unique password reset link.
-     */
+    private void sendEmail(String to, String subject, String htmlBody) {
+        try {
+            Gmail service = getGmailService();
+            Properties props = new Properties();
+            Session session = Session.getDefaultInstance(props, null);
+            MimeMessage email = new MimeMessage(session);
+            email.setFrom(new InternetAddress(senderEmail));
+            email.addRecipient(MimeMessage.RecipientType.TO, new InternetAddress(to));
+            email.setSubject(subject);
+            email.setContent(htmlBody, "text/html; charset=utf-8");
+
+            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+            email.writeTo(buffer);
+            String encodedEmail = Base64.encodeBase64URLSafeString(buffer.toByteArray());
+
+            Message message = new Message();
+            message.setRaw(encodedEmail);
+            service.users().messages().send("me", message).execute();
+            System.out.println("✅ Email sent successfully to: " + to + " | Subject: " + subject);
+        } catch (Exception e) {
+            System.err.println("⚠️ Failed to send email via Gmail API: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    // =========================================================
+    // ===============  PASSWORD EMAILS  =======================
+    // =========================================================
+
+    /** Sends password reset email. */
     public void sendPasswordResetEmail(String to, String resetLink) {
-        try {
-            Gmail service = getGmailService();
-            MimeMessage email = createEmailReset(to, resetLink);
-            String encodedEmail = createMessageWithEmail(email);
-            Message message = new Message();
-            message.setRaw(encodedEmail);
-            service.users().messages().send("me", message).execute();
-            System.out.println("✅ Password reset email sent successfully to: " + to);
-        } catch (Exception e) {
-            System.err.println("⚠️ Failed to send password reset email via Gmail API: " + e.getMessage());
-            e.printStackTrace();
-        }
+        String subject = "Reset Your Password – " + brandName;
+        String title = "🔐 Reset Your Password";
+        String message = String.format(
+            "We received a request to reset your password for your <strong>%s</strong> account. " +
+            "If you made this request, click the button below to set a new password. This link is valid for <strong>10 minutes</strong>. " +
+            "If you didn’t request a password reset, no action is needed.",
+            brandName
+        );
+        String buttonText = "Reset Password";
+
+        String htmlBody = createStyledEmailHtml(title, "Hello,", message, buttonText, resetLink);
+        sendEmail(to, subject, htmlBody);
     }
 
-    /**
-     * Sends a security notification after a user's password has been successfully changed.
-     * @param to The recipient's email.
-     * @param firstName The user's first name for personalization.
-     */
+    /** Sends password change confirmation email. */
     public void sendPasswordChangeNotification(String to, String firstName) {
-        try {
-            Gmail service = getGmailService();
-            MimeMessage email = createEmailChange(to, firstName);
-            String encodedEmail = createMessageWithEmail(email);
-            Message message = new Message();
-            message.setRaw(encodedEmail);
-            service.users().messages().send("me", message).execute();
-            System.out.println("✅ Password change notification sent successfully to: " + to);
-        } catch (Exception e) {
-            System.err.println("⚠️ Failed to send password change notification email via Gmail API: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
-    /**
-     * Creates the MimeMessage for the password change notification.
-     */
-    private MimeMessage createEmailChange(String to, String firstName) throws Exception {
-        Properties props = new Properties();
-        Session session = Session.getDefaultInstance(props, null);
-        MimeMessage email = new MimeMessage(session);
-
-        email.setFrom(new InternetAddress(senderEmail));
-        email.addRecipient(MimeMessage.RecipientType.TO, new InternetAddress(to));
-        email.setSubject("Security Alert: Your " + brandName + " Password Was Changed");
-
-        // The "Reset Password" button should link to your generic forgot-password page
+        String subject = "Security Alert: Your " + brandName + " Password Was Changed";
+        String title = "🔒 Password Changed Successfully";
+        String message = String.format(
+            "This is to let you know that the password for your <strong>%s</strong> account was recently changed. " +
+            "If you <strong>did not</strong> make this change, please reset your password immediately to protect your account.",
+            brandName
+        );
+        String buttonText = "Secure Your Account";
         String forgotPasswordUrl = frontendUrl + "/forgot-password";
 
-        String emailBody = String.format("""
+        String htmlBody = createStyledEmailHtml(title, "Hello " + firstName + ",", message, buttonText, forgotPasswordUrl);
+        sendEmail(to, subject, htmlBody);
+    }
+
+    // =========================================================
+    // ============  EMAIL CHANGE FLOW EMAILS  =================
+    // =========================================================
+
+    public void sendCurrentEmailVerificationOtp(String to, String otp) {
+        String subject = "Verify Your Email Change Request";
+        String title = "Verify Your Request";
+        String message = "To proceed with changing your email address, please use the following verification code. This code is valid for 5 minutes.";
+
+        String htmlBody = createStyledEmailHtml(title, "Hello,", message, otp);
+        sendEmail(to, subject, htmlBody);
+    }
+
+    public void sendNewEmailConfirmationOtp(String to, String otp) {
+        String subject = "Confirm Your New Email Address";
+        String title = "Confirm Your New Email";
+        String message = "To complete your email address change, please use the following verification code. This code is valid for 5 minutes.";
+
+        String htmlBody = createStyledEmailHtml(title, "Hello,", message, otp);
+        sendEmail(to, subject, htmlBody);
+    }
+
+    public void sendEmailChangeSuccessNotification(String to) {
+        String subject = "Your " + brandName + " Email Has Been Changed";
+        String title = "✅ Email Changed Successfully";
+        String message = String.format(
+            "This is a confirmation that the email address for your <strong>%s</strong> account has been successfully updated to <strong>%s</strong>.",
+            brandName, to
+        );
+
+        String htmlBody = createStyledEmailHtml(title, "Hi there,", message, null, null);
+        sendEmail(to, subject, htmlBody);
+    }
+
+
+    // =========================================================
+    // ============  MASTER EMAIL TEMPLATE BUILDER  ============
+    // =========================================================
+
+    private String createStyledEmailHtml(String title, String greeting, String message, String callToActionText, String callToActionUrl) {
+        String buttonHtml = "";
+        if (callToActionText != null && callToActionUrl != null) {
+            buttonHtml = String.format("""
+                <div class="button-wrapper">
+                  <a href="%s" class="button">%s</a>
+                </div>
+            """, callToActionUrl, callToActionText);
+        }
+
+        return String.format("""
             <!DOCTYPE html>
             <html lang="en">
             <head>
               <meta charset="UTF-8" />
               <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-              <title>Password Changed</title>
+              <title>%s</title>
               <style>
                 body { background-color: #f2f4f7; font-family: 'Inter', sans-serif; margin: 0; padding: 0; color: #2d2d2d; }
                 .wrapper { width: 100%%; padding: 30px 0; }
@@ -126,9 +181,8 @@ public class EmailService {
                 .header h1 { margin: 0; font-size: 22px; font-weight: 600; }
                 .content { padding: 32px; line-height: 1.7; font-size: 15px; }
                 .content p { margin-bottom: 18px; }
-                .icon { text-align: center; font-size: 42px; margin-bottom: 14px; }
                 .button-wrapper { text-align: center; margin: 30px 0; }
-                .button { display: inline-block; background: linear-gradient(135deg, #14b8a6, #0ea5e9); color: white; text-decoration: none; font-weight: 600; padding: 12px 28px; border-radius: 50px; letter-spacing: 0.4px; }
+                .button { display: inline-block; background: linear-gradient(135deg, #14b8a6, #0ea5e9); color: white !important; text-decoration: none; font-weight: 600; padding: 12px 28px; border-radius: 50px; letter-spacing: 0.4px; }
                 .footer { background-color: #f9fafb; text-align: center; padding: 20px; font-size: 12px; color: #7a7a7a; }
                 .footer a { color: #0ea5e9; text-decoration: none; }
               </style>
@@ -136,100 +190,44 @@ public class EmailService {
             <body>
               <div class="wrapper">
                 <div class="email-container">
-                  <div class="header"><h1>🔒 Password Changed Successfully</h1></div>
+                  <div class="header"><h1>%s</h1></div>
                   <div class="content">
-                    <div class="icon">✅</div>
-                    <p>Hello %s,</p>
-                    <p>This is to let you know that the password for your <strong>%s</strong> account was recently changed.</p>
-                    <p>If you made this change, no further action is required. You can now sign in using your new password.</p>
-                    <p>If you <strong>did not</strong> make this change, please reset your password immediately to protect your account.</p>
-                    <div class="button-wrapper">
-                      <a href="%s" class="button">Reset Password</a>
-                    </div>
-                    <p>For your security, we recommend reviewing your recent account activity.</p>
+                    <p>%s</p>
+                    <p>%s</p>
+                    %s
                   </div>
                   <div class="footer">
-                    &copy; %s %s &nbsp;|&nbsp; <a href="%s">Visit %s</a>
+                    &copy; %d %s &nbsp;|&nbsp; <a href="%s">Visit %s</a>
                   </div>
                 </div>
               </div>
             </body>
             </html>
             """,
-            firstName,
-            to,
-            forgotPasswordUrl,
-            String.valueOf(Year.now().getValue()),
+            title, // for <title> tag
+            title, // for header <h1>
+            greeting,
+            message,
+            buttonHtml,
+            Year.now().getValue(),
             brandName,
             frontendUrl,
             brandName
         );
-
-        email.setContent(emailBody, "text/html; charset=utf-8");
-        return email;
     }
 
-    /**
-     * Creates the MimeMessage for the password reset email.
-     */
-    private MimeMessage createEmailReset(String to, String resetLink) throws Exception {
-        Properties props = new Properties();
-        Session session = Session.getDefaultInstance(props, null);
-        MimeMessage email = new MimeMessage(session);
+    /** Overloaded method for OTP and simple notification emails without a button. */
+    private String createStyledEmailHtml(String title, String greeting, String message, String otp) {
+         String otpBoxHtml = "";
+         if (otp != null && !otp.isEmpty()) {
+             otpBoxHtml = String.format("""
+                 <div style="margin: 20px auto; font-size: 24px; font-weight: 700; letter-spacing: 4px; background: #ecfdf5; padding: 12px; border-radius: 8px; color: #065f46; text-align: center;">
+                   %s
+                 </div>
+             """, otp);
+         }
 
-        email.setFrom(new InternetAddress(senderEmail));
-        email.addRecipient(MimeMessage.RecipientType.TO, new InternetAddress(to));
-        email.setSubject("Reset Your Password – " + brandName);
-
-        String htmlBody = """
-            <!DOCTYPE html>
-            <html lang="en">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Password Reset</title>
-                <style>
-                    body { background-color: #f2f4f7; font-family: 'Inter', sans-serif; margin: 0; padding: 0; color: #2d2d2d; }
-                    .wrapper { width: 100%%; padding: 30px 0; }
-                    .email-container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 14px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06); overflow: hidden; }
-                    .header { background: linear-gradient(135deg, #16a34a, #10b981, #06b6d4); text-align: center; padding: 28px 20px; color: #fff; }
-                    .header h1 { margin: 0; font-size: 22px; font-weight: 600; }
-                    .content { padding: 32px; line-height: 1.7; font-size: 15px; }
-                    .content p { margin-bottom: 18px; }
-                    .button-wrapper { text-align: center; margin: 30px 0; }
-                    .button { display: inline-block; background: linear-gradient(135deg, #14b8a6, #0ea5e9); color: white; text-decoration: none; font-weight: 600; padding: 12px 28px; border-radius: 50px; letter-spacing: 0.4px; }
-                    .footer { background-color: #f9fafb; text-align: center; padding: 20px; font-size: 12px; color: #7a7a7a; }
-                    .footer a { color: #0ea5e9; text-decoration: none; }
-                </style>
-            </head>
-            <body>
-                <div class="wrapper">
-                    <div class="email-container">
-                        <div class="header"><h1>🔐 Reset Your Password</h1></div>
-                        <div class="content">
-                            <p>Hello,</p>
-                            <p>We received a request to reset your password for your <strong>%s</strong> account.</p>
-                            <p>If you made this request, click the button below to set a new password. This link is valid for <strong>10 minutes</strong>.</p>
-                            <div class="button-wrapper"><a href="%s" class="button">Reset Password</a></div>
-                            <p>If you didn’t request a password reset, no action is needed — your account is safe.</p>
-                        </div>
-                        <div class="footer">
-                            &copy; %d %s &nbsp;|&nbsp; <a href="%s">Visit %s</a>
-                        </div>
-                    </div>
-                </div>
-            </body>
-            </html>
-        """.formatted(brandName, resetLink, Year.now().getValue(), brandName, frontendUrl, brandName);
-
-        email.setContent(htmlBody, "text/html; charset=utf-8");
-        return email;
-    }
-
-    private String createMessageWithEmail(MimeMessage email) throws Exception {
-        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-        email.writeTo(buffer);
-        byte[] bytes = buffer.toByteArray();
-        return Base64.encodeBase64URLSafeString(bytes);
+         // Re-use the main template builder but insert the OTP box instead of a button
+         return createStyledEmailHtml(title, greeting, message + otpBoxHtml, null, null);
     }
 }
