@@ -76,4 +76,7 @@ google:
     token: ${GOOGLE_REFRESH_TOKEN}
   sender:
     email: ${GOOGLE_SENDER_EMAIL}
-
+  
+jwt:
+  secret: "${JWT_KEY}"
+  expiration-ms: 86400000
