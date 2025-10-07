@@ -30,13 +30,15 @@ public class User implements UserDetails {
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
-    @Column(name = "created_at", nullable = false)
+    @Column(name = "is_email_verified", nullable = false)
+    private boolean isEmailVerified = false;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
 
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt = OffsetDateTime.now();
 
-    // ✅ Relationships to preferences
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
             name = "user_preferred_categories",
@@ -72,6 +74,9 @@ public class User implements UserDetails {
     public String getPasswordHash() { return passwordHash; }
     public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
 
+    public boolean isEmailVerified() { return isEmailVerified; }
+    public void setEmailVerified(boolean emailVerified) { isEmailVerified = emailVerified; }
+
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
 
@@ -84,7 +89,6 @@ public class User implements UserDetails {
     public Set<Source> getPreferredSources() { return preferredSources; }
     public void setPreferredSources(Set<Source> preferredSources) { this.preferredSources = preferredSources; }
 
-    // 🔐 Security overrides
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return Collections.emptyList();
@@ -100,7 +104,9 @@ public class User implements UserDetails {
     public boolean isAccountNonExpired() { return true; }
 
     @Override
-    public boolean isAccountNonLocked() { return true; }
+    public boolean isAccountNonLocked() {
+        return this.isEmailVerified;
+    }
 
     @Override
     public boolean isCredentialsNonExpired() { return true; }
