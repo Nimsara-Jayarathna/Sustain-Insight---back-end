@@ -8,24 +8,30 @@ import java.util.List;
 @Entity
 @Table(name = "articles")
 public class Article {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(columnDefinition = "text")
     private String title;
-    private String summary;
-    private String content;
 
-    @Column(name = "image_url")
+    @Column(columnDefinition = "text")
+    private String summary;
+
+    @Column(columnDefinition = "text")
+    private String content;
+    
+    @Column(name = "image_url", columnDefinition = "text")
     private String imageUrl;
 
     @Column(name = "published_at")
     private OffsetDateTime publishedAt;
 
-    @Column(name = "created_at")
+    @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 
-    @Column(name = "updated_at")
+    @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
     @ManyToMany(fetch = FetchType.LAZY)
@@ -43,6 +49,19 @@ public class Article {
         inverseJoinColumns = @JoinColumn(name = "category_id")
     )
     private List<Category> categories = new ArrayList<>();
+
+    // 🔹 Lifecycle hooks
+    @PrePersist
+    protected void onCreate() {
+        OffsetDateTime now = OffsetDateTime.now();
+        this.createdAt = now;
+        this.updatedAt = now;
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = OffsetDateTime.now();
+    }
 
     // --- Getters & Setters ---
     public Long getId() { return id; }

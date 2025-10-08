@@ -8,7 +8,6 @@ import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 public class ArticleSpecification {
@@ -20,10 +19,8 @@ public class ArticleSpecification {
             }
             String likePattern = "%" + keyword.toLowerCase() + "%";
             return criteriaBuilder.or(
-                    criteriaBuilder.like(criteriaBuilder.lower(root.get("title")),
-                            likePattern),
-                    criteriaBuilder.like(criteriaBuilder.lower(root.get("summary")),
-                            likePattern)
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("title")), likePattern),
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("summary")), likePattern)
             );
         };
     }
@@ -62,12 +59,13 @@ public class ArticleSpecification {
         };
     }
 
-    public static Specification<Article> isWithinLast24Hours() {
+    // ✅ Generic: published within last X hours
+    public static Specification<Article> publishedWithinLastHours(int hours) {
         return (root, query, criteriaBuilder) -> {
             OffsetDateTime now = OffsetDateTime.now();
-            OffsetDateTime twentyFourHoursAgo = now.minus(24, ChronoUnit.HOURS);
+            OffsetDateTime cutoff = now.minusHours(hours);
             return criteriaBuilder.and(
-                    criteriaBuilder.greaterThanOrEqualTo(root.get("publishedAt"), twentyFourHoursAgo),
+                    criteriaBuilder.greaterThanOrEqualTo(root.get("publishedAt"), cutoff),
                     criteriaBuilder.lessThanOrEqualTo(root.get("publishedAt"), now)
             );
         };

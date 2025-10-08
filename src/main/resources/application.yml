@@ -7,9 +7,12 @@ spring:
     username: ${PGUSER}
     password: ${PGPASSWORD}
 
+  mail:
+    from: ${MAIL_FROM}   
+
   jpa:
     hibernate:
-      ddl-auto: update   # ⚠️ use "validate" in production
+      ddl-auto: none
       open-in-view: false
     properties:
       hibernate.jdbc.time_zone: UTC
@@ -18,20 +21,53 @@ spring:
     enabled: false
 
 server:
-  port: 8080
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info   # ⚠️ safer than "*"
-  endpoint:
-    health:
-      show-details: always
+  port: ${PORT}
 
 logging:
   level:
-    org.springframework.security: DEBUG
+    org.springframework.security: INFO
+    org.hibernate.type.descriptor.sql.BasicBinder: INFO
 
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS}
+
+newsapi:
+  url: https://newsapi.org/v2
+  apiKey: ${NEWS_API_KEY}
+  query: (sustainability OR climate OR renewable OR environment OR ESG OR carbon)
+  sortBy: publishedAt
+  language: en
+  pageSize: 50
+
+feed:
+  hoursWindow: ${FEED_HOURS_WINDOW}
+
+pagination:
+  defaultSize: ${PAGINATION_DEFAULT_SIZE}
+  maxSize: ${PAGINATION_MAX_SIZE}
+
+articles:
+  latest:
+    defaultLimit: ${LATEST_DEFAULT_LIMIT}
+    maxLimit: ${LATEST_MAX_LIMIT}
+
+fetching:
+  enabled: ${NEWS_FETCHING_ENABLED}
+
+app:
+  frontend-url: ${FRONTEND_URL}
+  brand:
+    name: ${BRAND_NAME}
+
+google:
+  client:
+    id=: ${GOOGLE_CLIENT_ID}
+    secret: ${GOOGLE_CLIENT_SECRET}
+  refresh:
+    token: ${GOOGLE_REFRESH_TOKEN}
+  sender:
+    email: ${GOOGLE_SENDER_EMAIL}
+  
+jwt:
+  secret: "${JWT_KEY}"
+  expiration-ms: 86400000
