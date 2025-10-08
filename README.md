@@ -85,42 +85,46 @@ Below is the recommended `.env` layout.
 ```bash
 # --- DATABASE CONFIGURATION ---
 PGHOST="your-neon-host"
-PGPORT="5432"
+PGPORT=5432
 PGDATABASE="your-database"
 PGUSER="your-username"
 PGPASSWORD="your-password"
+DATABASE_URL="postgresql://${PGUSER}:${PGPASSWORD}@${PGHOST}:${PGPORT}/${PGDATABASE}"
 
 # --- SERVER CONFIGURATION ---
-PORT="8080"
-CORS_ALLOWED_ORIGINS="http://localhost:5173,https://sustain-insight-front-end.vercel.app"
+PORT=8080
+CORS_ALLOWED_ORIGINS="your-frontend-url"
 
 # --- NEWS API CONFIGURATION ---
 NEWS_API_KEY="your-newsapi-key"
-NEWS_FETCHING_ENABLED="1"
+NEWS_FETCHING_ENABLED="0"
 
 # --- FEED CONFIGURATION ---
-FEED_HOURS_WINDOW="24"
+FEED_HOURS_WINDOW=6
 
 # --- PAGINATION SETTINGS ---
-PAGINATION_DEFAULT_SIZE="6"
-PAGINATION_MAX_SIZE="12"
+PAGINATION_DEFAULT_SIZE=9
+PAGINATION_MAX_SIZE=12
 
 # --- LATEST ARTICLES SETTINGS ---
-LATEST_DEFAULT_LIMIT="5"
-LATEST_MAX_LIMIT="6"
+LATEST_DEFAULT_LIMIT=5
+LATEST_MAX_LIMIT=6
 
 # --- FRONTEND LINK ---
-FRONTEND_URL="http://localhost:5173"
-
-# --- MAILTRAP SMTP (DEV MODE) ---
-MAIL_HOST="live.smtp.mailtrap.io"
-MAIL_PORT="587"
-MAIL_USERNAME="your-mailtrap-username"
-MAIL_PASSWORD="your-mailtrap-password"
-MAIL_FROM="no-reply@demomailtrap.co"
+FRONTEND_URL="your-frontend-url"
 
 # --- BRANDING ---
-BRAND_NAME="Sustain Insight"
+BRAND_NAME="Sustain-Insight"
+BRAND_DOMAIN="your-brand-domain"
+
+# --- GOOGLE MAIL CONFIGURATION ---
+GOOGLE_CLIENT_ID="your-google-client-id"
+GOOGLE_CLIENT_SECRET="your-google-client-secret"
+GOOGLE_REFRESH_TOKEN="your-google-refresh-token"
+GOOGLE_SENDER_EMAIL="your-sender-email"
+
+# --- JSON Web Token ---
+JWT_KEY="your-jwt-key"
 ```
 
 > ⚠️ **Important:**
