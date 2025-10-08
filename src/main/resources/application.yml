@@ -71,3 +71,13 @@ google:
 jwt:
   secret: "${JWT_KEY}"
   expiration-ms: 86400000
+
+security:
+  password:
+    argon2:
+      salt-length: ${SECURITY_PASSWORD_ARGON2_SALT_LENGTH:16}
+      hash-length: ${SECURITY_PASSWORD_ARGON2_HASH_LENGTH:32}
+      parallelism: ${SECURITY_PASSWORD_ARGON2_PARALLELISM:1}
+      memory: ${SECURITY_PASSWORD_ARGON2_MEMORY:8192}
+      iterations: ${SECURITY_PASSWORD_ARGON2_ITERATIONS:2}
+
