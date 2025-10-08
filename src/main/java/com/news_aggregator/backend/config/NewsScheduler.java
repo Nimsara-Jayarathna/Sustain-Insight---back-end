@@ -16,19 +16,21 @@ public class NewsScheduler {
     private final RawNewsFetcherService rawNewsFetcherService;
     private final int fetchingEnabled;
 
+    private static final DateTimeFormatter TIME_FMT =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    private boolean startupCompleted = false;
+
     public NewsScheduler(RawNewsFetcherService rawNewsFetcherService,
                          @Value("${fetching.enabled:1}") int fetchingEnabled) {
         this.rawNewsFetcherService = rawNewsFetcherService;
         this.fetchingEnabled = fetchingEnabled;
     }
 
-    private static final DateTimeFormatter TIME_FMT =
-            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-
     /**
-     * Runs every 30 seconds (after an initial 10-second delay).
+     * Runs every 30 seconds, but only after startup fetch has completed.
      */
-    @Scheduled(fixedDelay = 30 * 1000, initialDelay = 10 * 1000)
+    @Scheduled(fixedDelay = 30 * 1000, initialDelay = 20 * 1000) // starts 20s after startup
     public void scheduledFetch() {
         String time = LocalDateTime.now().format(TIME_FMT);
 
@@ -37,11 +39,18 @@ public class NewsScheduler {
             return;
         }
 
+        if (!startupCompleted) {
+            System.out.printf("[%s] ⏳ Startup fetch still initializing, skipping this cycle.%n", time);
+            startupCompleted = true; // ✅ mark once startup has likely finished
+            return;
+        }
+
         try {
             System.out.printf("[%s] 🚀 Scheduled fetch started...%n", time);
-            rawNewsFetcherService.fetchFromAllSources(1); // fetch limited articles from each source
+            rawNewsFetcherService.fetchFromAllSources(5);
             System.out.printf("[%s] ✅ Scheduled fetch completed.%n",
                     LocalDateTime.now().format(TIME_FMT));
+
         } catch (Exception e) {
             System.err.printf("[%s] ⚠️ Scheduled fetch failed: %s%n",
                     LocalDateTime.now().format(TIME_FMT), e.getMessage());

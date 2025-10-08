@@ -1,9 +1,8 @@
 package com.news_aggregator.backend.service.fetchers;
 
 import com.news_aggregator.backend.model.RawArticle;
-import com.news_aggregator.backend.repository.RawArticleRepository;
 import com.news_aggregator.backend.service.filters.EsgFilterService;
-import com.news_aggregator.backend.service.filters.TextNormalizerService;
+import com.news_aggregator.backend.repository.RawArticleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -23,8 +22,7 @@ public class NewsApiFetcher implements RawNewsSourceFetcher {
 
     private final RestTemplate restTemplate;
     private final RawArticleRepository rawRepo;
-    private final EsgFilterService esgFilterService;
-    private final TextNormalizerService textNormalizer;
+    private final EsgFilterService filter;
 
     @Value("${newsapi.url}")
     private String baseUrl;
@@ -61,8 +59,7 @@ public class NewsApiFetcher implements RawNewsSourceFetcher {
                         url, HttpMethod.GET, null, new ParameterizedTypeReference<>() {}
                 );
 
-                if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null)
-                    break;
+                if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) break;
 
                 @SuppressWarnings("unchecked")
                 List<Map<String, Object>> articles =
@@ -72,35 +69,31 @@ public class NewsApiFetcher implements RawNewsSourceFetcher {
 
                 for (Map<String, Object> item : articles) {
                     try {
-                        String title = textNormalizer.cleanHtml((String) item.get("title"));
-                        String description = textNormalizer.cleanHtml((String) item.get("description"));
-                        String content = textNormalizer.normalize((String) item.get("content"));
-                        String articleUrl = (String) item.get("url");
+                        String title = (String) item.get("title");
+                        String description = (String) item.get("description");
+                        String content = (String) item.get("content");
+                        if (content != null)
+                            content = content.replaceAll("\\[\\+\\d+ chars\\]", "").trim();
 
+                        String articleUrl = (String) item.get("url");
                         String sourceName = null;
                         Object src = item.get("source");
                         if (src instanceof Map<?, ?> srcMap)
                             sourceName = (String) srcMap.get("name");
 
-                        // 🧩 Deduplication
+                        // 🔹 Deduplication (DB-based)
                         if (articleUrl != null && rawRepo.existsByUrl(articleUrl)) {
                             duplicateCount++;
                             continue;
                         }
-
                         if (title != null && sourceName != null &&
                                 rawRepo.existsByTitleAndSourceName(title, sourceName)) {
                             duplicateCount++;
                             continue;
                         }
 
-                        // 🌿 ESG filter
-                        if (!esgFilterService.isEsgRelevant(title, description, content)) {
-                            skippedCount++;
-                            continue;
-                        }
+                        if (!filter.isEsgRelevant(title, description, content)) continue;
 
-                        // 💾 Save
                         RawArticle raw = new RawArticle();
                         raw.setApiSource(getSourceName());
                         raw.setTitle(title);
@@ -122,23 +115,23 @@ public class NewsApiFetcher implements RawNewsSourceFetcher {
                         if (limit > 0 && savedCount >= limit) break outer;
 
                     } catch (Exception e) {
-                        System.out.println("⚠️ Failed to save NewsAPI article: " + e.getMessage());
+                        System.out.println("⚠️ NewsAPI save failed: " + e.getMessage());
                     }
                 }
 
-                System.out.printf("📄 NewsAPI Page %d — Saved: %d | Duplicates: %d | Skipped: %d%n",
+                System.out.printf("📄 [NewsAPI] Page %d — Saved: %d | Duplicates: %d | Skipped: %d%n",
                         page, savedCount, duplicateCount, skippedCount);
 
                 Thread.sleep(2000);
+
             } catch (Exception e) {
-                System.out.println("⚠️ Error on NewsAPI page " + page + ": " + e.getMessage());
+                System.out.println("⚠️ [NewsAPI] Error on page " + page + ": " + e.getMessage());
             }
             page++;
         }
 
-        System.out.printf("✅ NewsAPI fetch finished — Total Saved: %d | Duplicates: %d | Skipped: %d%n",
+        System.out.printf("✅ [NewsAPI] Completed — Total Saved: %d | Duplicates: %d | Skipped: %d%n",
                 savedCount, duplicateCount, skippedCount);
-
         return savedArticles;
     }
 }

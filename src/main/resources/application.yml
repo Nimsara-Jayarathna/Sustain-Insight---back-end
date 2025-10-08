@@ -40,10 +40,10 @@ newsapi:
   pageSize: 50
 
 guardian:
-  api:
-    url: https://content.guardianapis.com
-    key: ${GUARDIAN_API_KEY}
+  url: https://content.guardianapis.com
+  apiKey: ${GUARDIAN_API_KEY}
   language: en
+
 
 feed:
   hoursWindow: ${FEED_HOURS_WINDOW}

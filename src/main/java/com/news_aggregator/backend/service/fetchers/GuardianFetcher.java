@@ -1,9 +1,8 @@
 package com.news_aggregator.backend.service.fetchers;
 
 import com.news_aggregator.backend.model.RawArticle;
-import com.news_aggregator.backend.repository.RawArticleRepository;
 import com.news_aggregator.backend.service.filters.EsgFilterService;
-import com.news_aggregator.backend.service.filters.TextNormalizerService;
+import com.news_aggregator.backend.repository.RawArticleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -23,17 +22,13 @@ public class GuardianFetcher implements RawNewsSourceFetcher {
 
     private final RestTemplate restTemplate;
     private final RawArticleRepository rawRepo;
-    private final EsgFilterService esgFilterService;
-    private final TextNormalizerService textNormalizer;
+    private final EsgFilterService filter;
 
-    @Value("${guardian.api.url}")
+    @Value("${guardian.url}")
     private String baseUrl;
 
-    @Value("${guardian.api.key}")
+    @Value("${guardian.apiKey}")
     private String apiKey;
-
-    private static final String SECTION = "environment";
-    private static final int PAGE_SIZE = 50;
 
     @Override
     public String getSourceName() {
@@ -43,15 +38,15 @@ public class GuardianFetcher implements RawNewsSourceFetcher {
     @Override
     public List<RawArticle> fetchArticles(int limit) {
         List<RawArticle> savedArticles = new ArrayList<>();
-        int savedCount = 0, duplicateCount = 0, skippedCount = 0;
+        int savedCount = 0, duplicateCount = 0;
         int page = 1;
 
         outer:
         while (page <= 10) {
             try {
                 String url = String.format(
-                        "%s/search?section=%s&page-size=%d&page=%d&show-fields=all&api-key=%s",
-                        baseUrl, SECTION, PAGE_SIZE, page, apiKey
+                        "%s/search?q=climate OR sustainability OR environment&show-fields=bodyText,headline,trailText,thumbnail,firstPublicationDate,byline&api-key=%s&page=%d&page-size=50",
+                        baseUrl, apiKey, page
                 );
 
                 ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
@@ -60,82 +55,71 @@ public class GuardianFetcher implements RawNewsSourceFetcher {
 
                 if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) break;
 
-                Map<String, Object> body = response.getBody();
-                @SuppressWarnings("unchecked")
-                Map<String, Object> responseMap = (Map<String, Object>) body.get("response");
-                if (responseMap == null) break;
+                Map<String, Object> resp = response.getBody();
+                Map<String, Object> responseData = (Map<String, Object>) resp.get("response");
+                if (responseData == null || !responseData.containsKey("results")) break;
 
                 @SuppressWarnings("unchecked")
-                List<Map<String, Object>> results = (List<Map<String, Object>>) responseMap.get("results");
-                if (results == null || results.isEmpty()) break;
+                List<Map<String, Object>> articles =
+                        (List<Map<String, Object>>) responseData.get("results");
 
-                for (Map<String, Object> item : results) {
+                for (Map<String, Object> item : articles) {
                     try {
-                        String title = textNormalizer.cleanHtml((String) item.get("webTitle"));
-                        String articleUrl = (String) item.get("webUrl");
-                        String publishedAt = (String) item.get("webPublicationDate");
-
-                        @SuppressWarnings("unchecked")
+                        String webUrl = (String) item.get("webUrl");
                         Map<String, Object> fields = (Map<String, Object>) item.get("fields");
-                        String description = textNormalizer.cleanHtml((String) (fields != null ? fields.get("trailText") : null));
-                        String content = textNormalizer.cleanHtml((String) (fields != null ? fields.get("body") : null));
-                        String thumbnail = fields != null ? (String) fields.get("thumbnail") : null;
 
-                        // Deduplication
-                        if (articleUrl != null && rawRepo.existsByUrl(articleUrl)) {
+                        String title = fields != null ? (String) fields.get("headline") : null;
+                        String description = fields != null ? (String) fields.get("trailText") : null;
+                        String content = fields != null ? (String) fields.get("bodyText") : null;
+                        String imageUrl = fields != null ? (String) fields.get("thumbnail") : null;
+                        String publishedAt = fields != null ? (String) fields.get("firstPublicationDate") : null;
+
+                        if (webUrl != null && rawRepo.existsByUrl(webUrl)) {
                             duplicateCount++;
                             continue;
                         }
-
                         if (title != null && rawRepo.existsByTitleAndSourceName(title, getSourceName())) {
                             duplicateCount++;
                             continue;
                         }
 
-                        // ESG filter
-                        if (!esgFilterService.isEsgRelevant(title, description, content)) {
-                            skippedCount++;
-                            continue;
-                        }
+                        if (!filter.isEsgRelevant(title, description, content)) continue;
 
-                        // Save
+
                         RawArticle raw = new RawArticle();
                         raw.setApiSource(getSourceName());
                         raw.setTitle(title);
                         raw.setDescription(description);
                         raw.setContent(content);
-                        raw.setUrl(articleUrl);
-                        raw.setImageUrl(thumbnail);
+                        raw.setUrl(webUrl);
+                        raw.setImageUrl(imageUrl);
                         raw.setSourceName(getSourceName());
-
                         if (publishedAt != null)
                             raw.setPublishedAt(OffsetDateTime.parse(publishedAt));
-
                         raw.setRawJson(item);
                         rawRepo.save(raw);
                         savedArticles.add(raw);
                         savedCount++;
 
                         if (limit > 0 && savedCount >= limit) break outer;
-
                     } catch (Exception e) {
-                        System.out.println("⚠️ Failed to save Guardian article: " + e.getMessage());
+                        System.out.println("⚠️ Guardian save failed: " + e.getMessage());
                     }
                 }
 
-                System.out.printf("📄 Guardian Page %d — Saved: %d | Duplicates: %d | Skipped: %d%n",
-                        page, savedCount, duplicateCount, skippedCount);
+                System.out.printf("📄 [Guardian] Page %d — Saved: %d | Duplicates: %d%n",
+                        page, savedCount, duplicateCount);
 
                 Thread.sleep(2000);
+
             } catch (Exception e) {
-                System.out.println("⚠️ Error on Guardian page " + page + ": " + e.getMessage());
+                System.out.println("⚠️ [Guardian] Error on page " + page + ": " + e.getMessage());
             }
             page++;
         }
 
-        System.out.printf("✅ Guardian fetch finished — Total Saved: %d | Duplicates: %d | Skipped: %d%n",
-                savedCount, duplicateCount, skippedCount);
-
+        System.out.printf("✅ [Guardian] Completed — Total Saved: %d | Duplicates: %d%n",
+                savedCount, duplicateCount);
         return savedArticles;
     }
 }
