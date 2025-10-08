@@ -1,8 +1,9 @@
 package com.news_aggregator.backend.service.fetchers;
 
 import com.news_aggregator.backend.model.RawArticle;
-import com.news_aggregator.backend.service.filters.EsgFilterService;
 import com.news_aggregator.backend.repository.RawArticleRepository;
+import com.news_aggregator.backend.service.filters.EsgFilterService;
+import com.news_aggregator.backend.service.filters.TextNormalizerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -23,6 +24,7 @@ public class GuardianFetcher implements RawNewsSourceFetcher {
     private final RestTemplate restTemplate;
     private final RawArticleRepository rawRepo;
     private final EsgFilterService filter;
+    private final TextNormalizerService normalizer; // ✅ inject the text normalizer
 
     @Value("${guardian.url}")
     private String baseUrl;
@@ -74,6 +76,12 @@ public class GuardianFetcher implements RawNewsSourceFetcher {
                         String imageUrl = fields != null ? (String) fields.get("thumbnail") : null;
                         String publishedAt = fields != null ? (String) fields.get("firstPublicationDate") : null;
 
+                        // 🔹 Normalize
+                        title = normalizer.normalize(title);
+                        description = normalizer.normalize(description);
+                        content = normalizer.normalize(content);
+
+                        // 🔹 Skip duplicates already in DB
                         if (webUrl != null && rawRepo.existsByUrl(webUrl)) {
                             duplicateCount++;
                             continue;
@@ -84,7 +92,6 @@ public class GuardianFetcher implements RawNewsSourceFetcher {
                         }
 
                         if (!filter.isEsgRelevant(title, description, content)) continue;
-
 
                         RawArticle raw = new RawArticle();
                         raw.setApiSource(getSourceName());
@@ -97,6 +104,7 @@ public class GuardianFetcher implements RawNewsSourceFetcher {
                         if (publishedAt != null)
                             raw.setPublishedAt(OffsetDateTime.parse(publishedAt));
                         raw.setRawJson(item);
+
                         rawRepo.save(raw);
                         savedArticles.add(raw);
                         savedCount++;

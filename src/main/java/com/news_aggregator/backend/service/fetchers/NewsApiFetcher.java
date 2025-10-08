@@ -1,8 +1,9 @@
 package com.news_aggregator.backend.service.fetchers;
 
 import com.news_aggregator.backend.model.RawArticle;
-import com.news_aggregator.backend.service.filters.EsgFilterService;
 import com.news_aggregator.backend.repository.RawArticleRepository;
+import com.news_aggregator.backend.service.filters.EsgFilterService;
+import com.news_aggregator.backend.service.filters.TextNormalizerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -23,6 +24,7 @@ public class NewsApiFetcher implements RawNewsSourceFetcher {
     private final RestTemplate restTemplate;
     private final RawArticleRepository rawRepo;
     private final EsgFilterService filter;
+    private final TextNormalizerService normalizer; // ✅ add here
 
     @Value("${newsapi.url}")
     private String baseUrl;
@@ -72,16 +74,20 @@ public class NewsApiFetcher implements RawNewsSourceFetcher {
                         String title = (String) item.get("title");
                         String description = (String) item.get("description");
                         String content = (String) item.get("content");
-                        if (content != null)
-                            content = content.replaceAll("\\[\\+\\d+ chars\\]", "").trim();
-
                         String articleUrl = (String) item.get("url");
                         String sourceName = null;
+
+                        if (content != null)
+                            content = normalizer.normalize(content);
+
                         Object src = item.get("source");
                         if (src instanceof Map<?, ?> srcMap)
                             sourceName = (String) srcMap.get("name");
 
-                        // 🔹 Deduplication (DB-based)
+                        // Normalize before checks
+                        title = normalizer.normalize(title);
+                        description = normalizer.normalize(description);
+
                         if (articleUrl != null && rawRepo.existsByUrl(articleUrl)) {
                             duplicateCount++;
                             continue;
