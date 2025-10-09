@@ -35,7 +35,7 @@ public class NewsScheduler {
         String time = LocalDateTime.now().format(TIME_FMT);
 
         if (fetchingEnabled == 0) {
-            System.out.printf("[%s] ⏸ Scheduled fetch skipped (fetching.enabled=0).%n", time);
+            //System.out.printf("[%s] ⏸ Scheduled fetch skipped (fetching.enabled=0).%n", time);
             return;
         }
 
