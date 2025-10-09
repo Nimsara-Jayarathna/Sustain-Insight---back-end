@@ -1,6 +1,7 @@
 package com.news_aggregator.backend.service.ai;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -8,9 +9,10 @@ import java.util.List;
 import java.util.Map;
 
 @Service
+@RequiredArgsConstructor
 public class ArticlePromptBuilderService {
 
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper;
 
     public String buildEngineeredPrompt(
             List<Map<String, Object>> clusters,
@@ -56,7 +58,7 @@ public class ArticlePromptBuilderService {
                                                                     "content", Map.of("type", "STRING", "description", "The full text content of the new article, composed in well-structured paragraphs. The content should be limited to 600 characters."),
                                                                     "url", Map.of("type", "STRING"),
                                                                     "image_url", Map.of("type", "STRING"),
-                                                                    "published_at", Map.of("type", "STRING"),
+                                                                    "published_at", Map.of("type", "STRING", "description", "The publication timestamp in ISO 8601 format (e.g., '2025-10-09T12:00:00Z')."),
                                                                     "category_ids", Map.of("type", "ARRAY", "items", Map.of("type", "INTEGER")),
                                                                     "source_ids", Map.of("type", "ARRAY", "items", Map.of("type", "INTEGER"))
                                                             )

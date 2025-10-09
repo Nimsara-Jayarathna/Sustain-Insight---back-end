@@ -16,12 +16,13 @@ public class ArticleSynthesisService {
 
     private final String geminiApiKey;
     private static final String GEMINI_URL =
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent";
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper;
 
-    public ArticleSynthesisService(@Value("${gemini.api.key}") String geminiApiKey) {
+    public ArticleSynthesisService(@Value("${gemini.api.key}") String geminiApiKey, ObjectMapper mapper) {
         this.geminiApiKey = geminiApiKey;
+        this.mapper = mapper;
     }
 
     /**
