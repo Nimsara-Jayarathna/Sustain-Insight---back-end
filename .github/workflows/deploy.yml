@@ -8,7 +8,6 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -27,6 +26,9 @@ jobs:
           mkdir deploy
           cp target/*.jar deploy/application.jar
           echo "web: java -jar application.jar" > deploy/Procfile
+          cd deploy
+          zip -r ../deploy.zip .  # ✅ Zip all contents into deploy.zip
+          cd ..
 
       - name: Deploy to AWS Elastic Beanstalk
         uses: einaregilsson/beanstalk-deploy@v22
@@ -37,4 +39,4 @@ jobs:
           environment_name: ${{ secrets.EB_ENV_NAME }}
           region: ${{ secrets.AWS_REGION }}
           version_label: v-${{ github.run_number }}
-          deployment_package: deploy
+          deployment_package: deploy.zip   # ✅ Use the ZIP file instead of directory
