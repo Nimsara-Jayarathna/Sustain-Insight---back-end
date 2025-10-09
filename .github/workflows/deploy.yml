@@ -38,5 +38,6 @@ jobs:
           application_name: ${{ secrets.EB_APP_NAME }}
           environment_name: ${{ secrets.EB_ENV_NAME }}
           region: ${{ secrets.AWS_REGION }}
-          version_label: v-${{ github.run_number }}
+          version_label: v-${{ github.run_number }}-${{ github.sha }}
           deployment_package: deploy.zip   # ✅ Use the ZIP file instead of directory
+          use_existing_version_if_available: true
