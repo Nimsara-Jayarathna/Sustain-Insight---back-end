@@ -87,4 +87,10 @@ security:
       memory: ${SECURITY_PASSWORD_ARGON2_MEMORY:8192}
       iterations: ${SECURITY_PASSWORD_ARGON2_ITERATIONS:2}
 
+openai:
+  api:
+    key: ${OPEN_AI_KEY}
 
+gemini:
+  api:
+    key: ${GEMINI_API_KEY}

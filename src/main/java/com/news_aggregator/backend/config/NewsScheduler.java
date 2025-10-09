@@ -47,7 +47,7 @@ public class NewsScheduler {
 
         try {
             System.out.printf("[%s] 🚀 Scheduled fetch started...%n", time);
-            rawNewsFetcherService.fetchFromAllSources(5);
+            rawNewsFetcherService.fetchFromAllSources(10);
             System.out.printf("[%s] ✅ Scheduled fetch completed.%n",
                     LocalDateTime.now().format(TIME_FMT));
 
