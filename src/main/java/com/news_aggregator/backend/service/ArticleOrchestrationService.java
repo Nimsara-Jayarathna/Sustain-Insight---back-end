@@ -7,9 +7,8 @@ import com.news_aggregator.backend.service.ai.ArticlePromptBuilderService;
 import com.news_aggregator.backend.service.ai.ArticleSynthesisService;
 import com.news_aggregator.backend.service.filters.ClusteredTfidfExportService;
 import com.news_aggregator.backend.service.filters.TfidfSimilarityService;
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
-import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -29,25 +28,23 @@ public class ArticleOrchestrationService {
     private final SourceService sourceService;
     private final ArticleService articleService;
     private final ObjectMapper objectMapper;
+    private final SynthesisState synthesisState;
 
-    @PostConstruct
-    public void runOnceAtStartup() {
-        System.out.println("🚀 Running orchestration once at startup...");
-        orchestrateArticleProcessing();
-        System.out.println("✅ Orchestration finished.");
-    }
-
-    // @Scheduled(cron = "0 0 * * * *") // Runs every hour
-    public void scheduledOrchestration() {
-        System.out.println("🚀 Starting scheduled article orchestration...");
-        orchestrateArticleProcessing();
-        System.out.println("✅ Scheduled article orchestration finished.");
-    }
+    @Value("${clustering.tfidf.threshold:0.5}")
+    private double tfidfThreshold;
 
     public void orchestrateArticleProcessing() {
+        if (synthesisState.isSynthesisInProgress()) {
+            System.out.println("Synthesis is already in progress. Skipping orchestration.");
+            return;
+        }
+
         try {
-            // Step 1: Fetch raw articles
-            List<RawArticle> rawArticles = rawArticleRepository.findAll();
+            synthesisState.setSynthesisInProgress(true);
+            System.out.println("🚀 Starting article orchestration...");
+
+            // Step 1: Fetch raw articles that have not been processed
+            List<RawArticle> rawArticles = rawArticleRepository.findByProcessedFalse();
             List<TfidfSimilarityService.ArticleMinimal> articleList = rawArticles.stream()
                     .map(a -> new TfidfSimilarityService.ArticleMinimal(
                             a.getId(),
@@ -58,7 +55,7 @@ public class ArticleOrchestrationService {
                     .toList();
 
             // Step 2: Generate similarity scores
-            List<TfidfSimilarityService.SimilarityResult> similarityPairs = tfidfSimilarityService.findSimilarArticles(articleList, 0.5);
+            List<TfidfSimilarityService.SimilarityResult> similarityPairs = tfidfSimilarityService.findSimilarArticles(articleList, tfidfThreshold);
             List<Map<String, Object>> tfidfPairs = new ArrayList<>();
             for (TfidfSimilarityService.SimilarityResult p : similarityPairs) {
                 tfidfPairs.add(Map.of(
@@ -69,9 +66,14 @@ public class ArticleOrchestrationService {
             }
 
             // Step 3: Build article clusters
-            Map<String, Object> clusteredData = clusteredTfidfExportService.buildClusteredExport(tfidfPairs, 0.5);
+            Map<String, Object> clusteredData = clusteredTfidfExportService.buildClusteredExport(tfidfPairs, tfidfThreshold);
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> clusters = (List<Map<String, Object>>) clusteredData.get("clusters");
+
+            if (clusters.isEmpty()) {
+                System.out.println("No new clusters to process.");
+                return;
+            }
 
             // Step 4: Synthesize articles with AI
             List<Map<String, Object>> availableCategories = categoryService.getAllAsMap();
@@ -83,9 +85,19 @@ public class ArticleOrchestrationService {
             List<Map<String, Object>> synthesizedArticles = objectMapper.readValue(geminiResponse, new com.fasterxml.jackson.core.type.TypeReference<List<Map<String, Object>>>() {});
             articleService.saveSynthesizedArticles(synthesizedArticles);
 
+            // Step 6: Mark all articles that were part of the TF-IDF check as processed
+            for (RawArticle rawArticle : rawArticles) {
+                rawArticle.setProcessed(true);
+            }
+            rawArticleRepository.saveAll(rawArticles);
+
+            System.out.println("✅ Article orchestration finished successfully.");
+
         } catch (Exception e) {
             System.err.println("❌ An error occurred during article orchestration:");
             e.printStackTrace();
+        } finally {
+            synthesisState.setSynthesisInProgress(false);
         }
     }
 }

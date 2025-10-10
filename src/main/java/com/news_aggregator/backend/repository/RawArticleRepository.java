@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface RawArticleRepository extends JpaRepository<RawArticle, Long> {
     boolean existsByUrl(String url);
     boolean existsByTitleAndSourceName(String title, String sourceName);
+    java.util.List<RawArticle> findByProcessedFalse();
+    long countByProcessedFalse();
     
 }
 

@@ -29,44 +29,55 @@ public class ArticleSynthesisService {
      * 🔹 Sends a JSON cluster prompt to Gemini and returns clean extracted JSON content.
      */
     public String generateUnifiedArticle(String engineeredPromptJson) {
-        try {
-            System.out.println("🤖 Sending engineered JSON to Gemini...");
-            String requestUrl = GEMINI_URL + "?key=" + geminiApiKey;
+        int maxRetries = 3;
+        int retryDelay = 5000; // 5 seconds
 
-            // ✅ Build request body
-            Map<String, Object> body = mapper.readValue(engineeredPromptJson, new TypeReference<Map<String, Object>>() {});
+        for (int i = 0; i < maxRetries; i++) {
+            try {
+                System.out.println("🤖 Sending engineered JSON to Gemini... (Attempt " + (i + 1) + ")");
+                String requestUrl = GEMINI_URL + "?key=" + geminiApiKey;
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
+                Map<String, Object> body = mapper.readValue(engineeredPromptJson, new TypeReference<Map<String, Object>>() {});
 
-            RestTemplate restTemplate = new RestTemplate();
-            restTemplate.setRequestFactory(
-                    new org.springframework.http.client.SimpleClientHttpRequestFactory() {{
-                        setConnectTimeout((int) Duration.ofSeconds(600).toMillis());
-                        setReadTimeout((int) Duration.ofSeconds(600).toMillis());
-                    }}
-            );
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
 
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
-            ResponseEntity<String> response = restTemplate.exchange(
-                    requestUrl, HttpMethod.POST, entity, String.class);
+                RestTemplate restTemplate = new RestTemplate();
+                restTemplate.setRequestFactory(
+                        new org.springframework.http.client.SimpleClientHttpRequestFactory() {{
+                            setConnectTimeout((int) Duration.ofSeconds(600).toMillis());
+                            setReadTimeout((int) Duration.ofSeconds(600).toMillis());
+                        }}
+                );
 
-            System.out.println("✅ Gemini responded with: " + response.getStatusCode());
+                HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+                ResponseEntity<String> response = restTemplate.exchange(
+                        requestUrl, HttpMethod.POST, entity, String.class);
 
-            String responseBody = response.getBody();
-            System.out.println("📥 Raw Gemini response: " + responseBody);
+                System.out.println("✅ Gemini responded with: " + response.getStatusCode());
 
-            // 🧹 Extract clean JSON from Gemini response
-            String cleanJson = extractGeminiText(responseBody);
-            System.out.println("🧩 Clean extracted JSON ready for DB insert:");
-            System.out.println(cleanJson);
+                String responseBody = response.getBody();
+                String cleanJson = extractGeminiText(responseBody);
+                System.out.println("🧩 Clean extracted JSON ready for DB insert:");
+                System.out.println(cleanJson);
 
-            return cleanJson;
+                return cleanJson;
 
-        } catch (Exception e) {
-            e.printStackTrace();
-            return "{\"error\": \"Gemini API call failed: " + e.getMessage() + "\"}";
+            } catch (Exception e) {
+                System.err.println("⚠️ Gemini API call failed: " + e.getMessage());
+                if (i < maxRetries - 1) {
+                    try {
+                        System.out.println("Retrying in " + retryDelay + "ms...");
+                        Thread.sleep(retryDelay);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                    }
+                } else {
+                    throw new RuntimeException("Gemini API call failed after " + maxRetries + " attempts.", e);
+                }
+            }
         }
+        return "[]"; // Should not be reached
     }
 
     /**

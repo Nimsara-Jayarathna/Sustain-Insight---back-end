@@ -50,4 +50,8 @@ public class RawArticle {
     @Column(columnDefinition = "jsonb")
     @Type(JsonType.class)
     private Map<String, Object> rawJson;
+
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean processed = false;
 }

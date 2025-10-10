@@ -218,7 +218,18 @@ public class ArticleService {
             article.setSummary((String) articleMap.get("summary"));
             article.setContent((String) articleMap.get("content"));
             article.setImageUrl((String) articleMap.get("image_url"));
-            article.setPublishedAt(OffsetDateTime.parse((String) articleMap.get("published_at")));
+
+            try {
+                String publishedAtStr = (String) articleMap.get("published_at");
+                if (publishedAtStr != null) {
+                    article.setPublishedAt(OffsetDateTime.parse(publishedAtStr));
+                } else {
+                    article.setPublishedAt(OffsetDateTime.now());
+                }
+            } catch (Exception e) {
+                System.err.println("⚠️ Could not parse date: " + articleMap.get("published_at") + ". Defaulting to now.");
+                article.setPublishedAt(OffsetDateTime.now());
+            }
 
             @SuppressWarnings("unchecked")
             List<Integer> categoryIds = (List<Integer>) articleMap.get("category_ids");
