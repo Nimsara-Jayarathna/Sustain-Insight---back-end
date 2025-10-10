@@ -37,3 +37,7 @@ src/.DS_Store
 # Env files
 .env
 .env.*       # ignore .env.development, .env.production, etc. (optional)
+build-and-zip.sh
+application.jar
+Procfile
+*.zip
