@@ -39,3 +39,4 @@ src/.DS_Store
 .env.*       # ignore .env.development, .env.production, etc. (optional)
 deploy.zip
 .gitignore
+Procfile
