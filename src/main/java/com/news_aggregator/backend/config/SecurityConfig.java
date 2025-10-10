@@ -37,6 +37,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/public/**").permitAll()
+                .requestMatchers("/health").permitAll().
+                requestMatchers("/actuator/health").permitAll()        
                 .anyRequest().authenticated()
             )
             // Add our JWT filter
