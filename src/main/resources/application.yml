@@ -20,6 +20,17 @@ spring:
   flyway:
     enabled: false
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+  server:
+    port: ${PORT:5000}
+
 server:
   port: ${PORT}
 
@@ -39,6 +50,12 @@ newsapi:
   language: en
   pageSize: 50
 
+guardian:
+  url: https://content.guardianapis.com
+  apiKey: ${GUARDIAN_API_KEY}
+  language: en
+
+
 feed:
   hoursWindow: ${FEED_HOURS_WINDOW}
 
@@ -53,6 +70,17 @@ articles:
 
 fetching:
   enabled: ${NEWS_FETCHING_ENABLED}
+  delay: ${NEWS_FETCHING_DELAY}
+  scheduled:
+    limit: ${NEWS_FETCHING_SCHEDULED_LIMIT}
+
+synthesis:
+  trigger:
+    threshold: ${SYNTHESIS_TRIGGER_THRESHOLD}
+
+clustering:
+  tfidf:
+    threshold: ${CLUSTERING_TFIDF_THRESHOLD}
 
 app:
   frontend-url: ${FRONTEND_URL}
@@ -81,3 +109,10 @@ security:
       memory: ${SECURITY_PASSWORD_ARGON2_MEMORY:8192}
       iterations: ${SECURITY_PASSWORD_ARGON2_ITERATIONS:2}
 
+openai:
+  api:
+    key: ${OPEN_AI_KEY}
+
+gemini:
+  api:
+    key: ${GEMINI_API_KEY}

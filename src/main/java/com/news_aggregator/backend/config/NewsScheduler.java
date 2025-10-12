@@ -1,35 +1,80 @@
 package com.news_aggregator.backend.config;
 
-import com.news_aggregator.backend.service.NewsService;
+import com.news_aggregator.backend.repository.RawArticleRepository;
+import com.news_aggregator.backend.service.ArticleOrchestrationService;
+import com.news_aggregator.backend.service.RawNewsFetcherService;
+import com.news_aggregator.backend.service.SynthesisState;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
+import org.springframework.context.annotation.Lazy;
+
 @Component
 @EnableScheduling
 public class NewsScheduler {
 
-    private final NewsService newsService;
-    private final int fetchingEnabled; // 0 or 1
+    private final RawNewsFetcherService rawNewsFetcherService;
+    private final ArticleOrchestrationService articleOrchestrationService;
+    private final RawArticleRepository rawArticleRepository;
+    private final SynthesisState synthesisState;
+    private final int fetchingEnabled;
+    private final int scheduledLimit;
+    private final int synthesisThreshold;
 
-    public NewsScheduler(NewsService newsService,
-                         @Value("${fetching.enabled}") int fetchingEnabled) {
-        this.newsService = newsService;
+    private static final DateTimeFormatter TIME_FMT =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    public NewsScheduler(RawNewsFetcherService rawNewsFetcherService,
+                         @Lazy ArticleOrchestrationService articleOrchestrationService,
+                         RawArticleRepository rawArticleRepository,
+                         SynthesisState synthesisState,
+                         @Value("${fetching.enabled:1}") int fetchingEnabled,
+                         @Value("${fetching.scheduled.limit:10}") int scheduledLimit,
+                         @Value("${synthesis.trigger.threshold:100}") int synthesisThreshold) {
+        this.rawNewsFetcherService = rawNewsFetcherService;
+        this.articleOrchestrationService = articleOrchestrationService;
+        this.rawArticleRepository = rawArticleRepository;
+        this.synthesisState = synthesisState;
         this.fetchingEnabled = fetchingEnabled;
+        this.scheduledLimit = scheduledLimit;
+        this.synthesisThreshold = synthesisThreshold;
     }
-    // Run once every 1 minute, only after last run finishes
-    @Scheduled(fixedDelay = 60 * 1000, initialDelay = 10 * 1000)
-    public void fetchDailyNews() {
+
+    @Scheduled(fixedDelayString = "${fetching.delay}", initialDelay = 10000)
+    public void scheduledLogic() {
+        String time = LocalDateTime.now().format(TIME_FMT);
+
         if (fetchingEnabled == 0) {
-            System.out.println("⏸ Scheduled fetch disabled (fetching.enabled=0).");
             return;
         }
+
+        if (synthesisState.isSynthesisInProgress()) {
+            System.out.printf("[%s] ⏸ Synthesis is in progress. Skipping this cycle.%n", time);
+            return;
+        }
+
         try {
-            newsService.fetchAndSaveArticles(2);
-            System.out.println("✅ Scheduled fetch completed (2 articles).");
+            long unprocessedCount = rawArticleRepository.countByProcessedFalse();
+            System.out.printf("[%s] 🔎 Found %d unprocessed articles.%n", time, unprocessedCount);
+
+            if (unprocessedCount >= synthesisThreshold) {
+                System.out.printf("[%s] 🔥 Threshold of %d reached. Triggering synthesis...%n", time, synthesisThreshold);
+                articleOrchestrationService.orchestrateArticleProcessing();
+            } else {
+                System.out.printf("[%s] 🚀 Fetching new articles...%n", time);
+                rawNewsFetcherService.fetchFromAllSources(scheduledLimit);
+                System.out.printf("[%s] ✅ Fetching completed.%n", LocalDateTime.now().format(TIME_FMT));
+            }
+
         } catch (Exception e) {
-            System.err.println("⚠️ Scheduled fetch failed: " + e.getMessage());
+            System.err.printf("[%s] ⚠️ Scheduled task failed: %s%n",
+                    LocalDateTime.now().format(TIME_FMT), e.getMessage());
+            e.printStackTrace();
         }
     }
 }

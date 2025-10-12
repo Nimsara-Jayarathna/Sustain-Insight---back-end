@@ -6,9 +6,7 @@ import com.news_aggregator.backend.model.Article;
 import com.news_aggregator.backend.model.Category;
 import com.news_aggregator.backend.model.Source;
 import com.news_aggregator.backend.model.User;
-import com.news_aggregator.backend.repository.ArticleRepository;
-import com.news_aggregator.backend.repository.BookmarkRepository;
-import com.news_aggregator.backend.repository.UserRepository;
+import com.news_aggregator.backend.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.*;
@@ -17,6 +15,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -28,11 +27,12 @@ public class ArticleService {
     private final UserRepository userRepository;
     private final BookmarkRepository bookmarkRepository;
     private final InsightService insightService;
+    private final CategoryRepository categoryRepository;
+    private final SourceRepository sourceRepository;
 
-    @Value("${feed.hoursWindow}") // configurable via env
+    @Value("${feed.hoursWindow}")
     private int feedHoursWindow;
 
-    // 🔹 Latest Articles (no pagination, no user context)
     public List<ArticleDto> getLatestArticles(int limit) {
         List<Article> articles = articleRepository.findTopNArticles(limit);
         return articles.stream()
@@ -40,7 +40,6 @@ public class ArticleService {
                 .collect(Collectors.toList());
     }
 
-    // 🔹 All Articles (public, supports sorting)
     public PagedResponse<ArticleDto> getAllArticles(
             List<Long> categoryIds,
             List<Long> sourceIds,
@@ -53,7 +52,6 @@ public class ArticleService {
         return getAllArticles(categoryIds, sourceIds, keyword, date, page, size, sortParam, null);
     }
 
-    // 🔹 All Articles (authenticated, supports sorting + bookmarks + insights)
     public PagedResponse<ArticleDto> getAllArticles(
             List<Long> categoryIds,
             List<Long> sourceIds,
@@ -66,52 +64,42 @@ public class ArticleService {
     ) {
         User user = userDetails != null ? getUser(userDetails) : null;
 
-        // ✅ Handle "popular" sort using cached insight counts
         if ("popular".equalsIgnoreCase(sortParam)) {
-    Specification<Article> spec = Specification.where(ArticleSpecification.hasKeyword(keyword))
-            .and(ArticleSpecification.hasCategories(categoryIds))
-            .and(ArticleSpecification.hasSources(sourceIds))
-            .and(ArticleSpecification.hasDate(date));
+            Specification<Article> spec = Specification.where(ArticleSpecification.hasKeyword(keyword))
+                    .and(ArticleSpecification.hasCategories(categoryIds))
+                    .and(ArticleSpecification.hasSources(sourceIds))
+                    .and(ArticleSpecification.hasDate(date));
 
-    // Fetch all filtered results first (within reason)
-    List<Article> filtered = articleRepository.findAll(spec);
+            List<Article> filtered = articleRepository.findAll(spec);
 
-    // Sort by insight_count (cached) DESC, then publishedAt DESC
-    filtered.sort((a, b) -> {
-        long countA = insightService.getCount(a);
-        long countB = insightService.getCount(b);
+            filtered.sort((a, b) -> {
+                long countA = insightService.getCount(a);
+                long countB = insightService.getCount(b);
+                if (countA != countB) return Long.compare(countB, countA);
+                if (a.getPublishedAt() == null && b.getPublishedAt() == null) return 0;
+                if (a.getPublishedAt() == null) return 1;
+                if (b.getPublishedAt() == null) return -1;
+                return b.getPublishedAt().compareTo(a.getPublishedAt());
+            });
 
-        if (countA != countB)
-            return Long.compare(countB, countA); // higher first
+            int fromIndex = Math.min((page - 1) * size, filtered.size());
+            int toIndex = Math.min(fromIndex + size, filtered.size());
+            List<Article> paginated = filtered.subList(fromIndex, toIndex);
 
-        // tie-breaker: newer first
-        if (a.getPublishedAt() == null && b.getPublishedAt() == null) return 0;
-        if (a.getPublishedAt() == null) return 1;
-        if (b.getPublishedAt() == null) return -1;
-        return b.getPublishedAt().compareTo(a.getPublishedAt());
-    });
+            List<ArticleDto> dtos = paginated.stream()
+                    .map(article -> mapToDto(article, user))
+                    .toList();
 
-    // Pagination manually
-    int fromIndex = Math.min((page - 1) * size, filtered.size());
-    int toIndex = Math.min(fromIndex + size, filtered.size());
-    List<Article> paginated = filtered.subList(fromIndex, toIndex);
+            return new PagedResponse<>(
+                    dtos,
+                    page,
+                    size,
+                    filtered.size(),
+                    (int) Math.ceil((double) filtered.size() / size),
+                    toIndex >= filtered.size()
+            );
+        }
 
-    List<ArticleDto> dtos = paginated.stream()
-            .map(article -> mapToDto(article, user))
-            .toList();
-
-    return new PagedResponse<>(
-            dtos,
-            page,
-            size,
-            filtered.size(),
-            (int) Math.ceil((double) filtered.size() / size),
-            toIndex >= filtered.size()
-    );
-}
-
-
-        // ✅ Default sort handling (newest or oldest)
         Sort sort = switch (sortParam == null ? "newest" : sortParam.toLowerCase()) {
             case "oldest" -> Sort.by(Sort.Order.asc("publishedAt"));
             default -> Sort.by(Sort.Order.desc("publishedAt"));
@@ -131,7 +119,7 @@ public class ArticleService {
 
         return new PagedResponse<>(
                 dtos,
-                articlePage.getNumber() + 1, // convert to 1-based index
+                articlePage.getNumber() + 1,
                 articlePage.getSize(),
                 articlePage.getTotalElements(),
                 articlePage.getTotalPages(),
@@ -139,16 +127,10 @@ public class ArticleService {
         );
     }
 
-    // 🔹 Personalized Feed (non-paginated)
     public List<ArticleDto> getForYouFeed(UserDetails userDetails) {
         User user = getUser(userDetails);
-
-        List<Long> preferredCategoryIds = user.getPreferredCategories().stream()
-                .map(Category::getId)
-                .toList();
-        List<Long> preferredSourceIds = user.getPreferredSources().stream()
-                .map(Source::getId)
-                .toList();
+        List<Long> preferredCategoryIds = user.getPreferredCategories().stream().map(Category::getId).toList();
+        List<Long> preferredSourceIds = user.getPreferredSources().stream().map(Source::getId).toList();
 
         if (preferredCategoryIds.isEmpty() && preferredSourceIds.isEmpty()) {
             return Collections.emptyList();
@@ -165,16 +147,10 @@ public class ArticleService {
                 .collect(Collectors.toList());
     }
 
-    // 🔹 Personalized Feed (paginated)
     public PagedResponse<ArticleDto> getForYouFeed(UserDetails userDetails, int page, int size) {
         User user = getUser(userDetails);
-
-        List<Long> preferredCategoryIds = user.getPreferredCategories().stream()
-                .map(Category::getId)
-                .toList();
-        List<Long> preferredSourceIds = user.getPreferredSources().stream()
-                .map(Source::getId)
-                .toList();
+        List<Long> preferredCategoryIds = user.getPreferredCategories().stream().map(Category::getId).toList();
+        List<Long> preferredSourceIds = user.getPreferredSources().stream().map(Source::getId).toList();
 
         if (preferredCategoryIds.isEmpty() && preferredSourceIds.isEmpty()) {
             return new PagedResponse<>(Collections.emptyList(), page, size, 0, 0, true);
@@ -201,20 +177,15 @@ public class ArticleService {
         );
     }
 
-    // --- 🔹 Helpers ---
-
     private User getUser(UserDetails userDetails) {
         return userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
-    /**
-     * 🔹 Maps Article → ArticleDto with bookmark and insight metadata.
-     */
     public ArticleDto mapToDto(Article article, User user) {
         boolean bookmarked = false;
         boolean insighted = false;
-        long insightCount = insightService.getCount(article); // cached count
+        long insightCount = insightService.getCount(article);
 
         if (user != null) {
             bookmarked = bookmarkRepository.existsByUser_IdAndArticle_Id(user.getId(), article.getId());
@@ -238,5 +209,43 @@ public class ArticleService {
     public Article getArticleEntity(Long articleId) {
         return articleRepository.findById(articleId)
                 .orElseThrow(() -> new RuntimeException("Article not found"));
+    }
+
+    public void saveSynthesizedArticles(List<Map<String, Object>> articles) {
+        for (Map<String, Object> articleMap : articles) {
+            Article article = new Article();
+            article.setTitle((String) articleMap.get("title"));
+            article.setSummary((String) articleMap.get("summary"));
+            article.setContent((String) articleMap.get("content"));
+            article.setImageUrl((String) articleMap.get("image_url"));
+
+            try {
+                String publishedAtStr = (String) articleMap.get("published_at");
+                if (publishedAtStr != null) {
+                    article.setPublishedAt(OffsetDateTime.parse(publishedAtStr));
+                } else {
+                    article.setPublishedAt(OffsetDateTime.now());
+                }
+            } catch (Exception e) {
+                System.err.println("⚠️ Could not parse date: " + articleMap.get("published_at") + ". Defaulting to now.");
+                article.setPublishedAt(OffsetDateTime.now());
+            }
+
+            @SuppressWarnings("unchecked")
+            List<Integer> categoryIds = (List<Integer>) articleMap.get("category_ids");
+            if (categoryIds != null) {
+                List<Category> categories = categoryRepository.findAllById(categoryIds.stream().map(Long::valueOf).collect(Collectors.toList()));
+                article.setCategories(new ArrayList<>(categories));
+            }
+
+            @SuppressWarnings("unchecked")
+            List<Integer> sourceIds = (List<Integer>) articleMap.get("source_ids");
+            if (sourceIds != null) {
+                List<Source> sources = sourceRepository.findAllById(sourceIds.stream().map(Long::valueOf).collect(Collectors.toList()));
+                article.setSources(new ArrayList<>(sources));
+            }
+
+            articleRepository.save(article);
+        }
     }
 }

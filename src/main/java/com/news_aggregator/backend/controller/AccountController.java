@@ -97,6 +97,8 @@ public class AccountController {
                 user.setFirstName(request.getFirstName());
             if (request.getLastName() != null && !request.getLastName().isBlank())
                 user.setLastName(request.getLastName());
+            if (request.getJobTitle() != null && !request.getJobTitle().isBlank())
+                user.setJobTitle(request.getJobTitle());
 
             if (request.getCategoryIds() != null)
                 user.setPreferredCategories(new HashSet<>(categoryRepository.findAllById(request.getCategoryIds())));
@@ -290,6 +292,7 @@ public class AccountController {
                 user.getFirstName(),
                 user.getLastName(),
                 user.getEmail(),
+                user.getJobTitle(),
                 user.getPreferredCategories().stream()
                         .map(c -> new CategoryDto(c.getId(), c.getName()))
                         .collect(Collectors.toList()),

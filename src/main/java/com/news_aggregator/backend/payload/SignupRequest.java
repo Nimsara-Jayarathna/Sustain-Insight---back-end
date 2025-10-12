@@ -1,8 +1,11 @@
 package com.news_aggregator.backend.payload;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class SignupRequest {
     private String firstName;
     private String lastName;
+    @JsonProperty("title")
     private String jobTitle;
     private String email;
     private String password;
