@@ -41,3 +41,4 @@ build-and-zip.sh
 application.jar
 Procfile
 *.zip
+deploy-eb.sh
