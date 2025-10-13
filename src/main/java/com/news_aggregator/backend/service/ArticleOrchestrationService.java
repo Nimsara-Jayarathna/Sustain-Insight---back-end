@@ -1,7 +1,10 @@
 package com.news_aggregator.backend.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.news_aggregator.backend.dto.ArticleContentDto;
+import com.news_aggregator.backend.model.Article;
 import com.news_aggregator.backend.model.RawArticle;
+import com.news_aggregator.backend.repository.ArticleRepository;
 import com.news_aggregator.backend.repository.RawArticleRepository;
 import com.news_aggregator.backend.service.ai.ArticlePromptBuilderService;
 import com.news_aggregator.backend.service.ai.ArticleSynthesisService;
@@ -29,9 +32,16 @@ public class ArticleOrchestrationService {
     private final ArticleService articleService;
     private final ObjectMapper objectMapper;
     private final SynthesisState synthesisState;
+    private final ArticleRepository articleRepository;
 
     @Value("${clustering.tfidf.threshold:0.5}")
     private double tfidfThreshold;
+
+    public ArticleContentDto getArticleContent(Long articleId) {
+        Article article = articleRepository.findById(articleId)
+                .orElseThrow(() -> new RuntimeException("Article not found"));
+        return new ArticleContentDto(article.getId(), article.getContent());
+    }
 
     public void orchestrateArticleProcessing() {
         if (synthesisState.isSynthesisInProgress()) {
