@@ -97,8 +97,9 @@ google:
     email: ${GOOGLE_SENDER_EMAIL}
   
 jwt:
-  secret: "${JWT_KEY}"
-  expiration-ms: 86400000
+  secret: ${JWT_KEY}
+  access-expiration-ms: ${JWT_ACCESS_EXPIRATION:30000}        # 15 min default
+  refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION:90000}   # 7 days default
 
 security:
   password:

@@ -1,19 +1,16 @@
 package com.news_aggregator.backend.service;
 
 import com.news_aggregator.backend.model.EmailVerificationToken;
+import com.news_aggregator.backend.model.RefreshToken;
 import com.news_aggregator.backend.model.User;
 import com.news_aggregator.backend.payload.AuthResponse;
 import com.news_aggregator.backend.payload.LoginRequest;
 import com.news_aggregator.backend.payload.SignupRequest;
 import com.news_aggregator.backend.repository.EmailVerificationTokenRepository;
 import com.news_aggregator.backend.repository.UserRepository;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.LockedException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -32,6 +29,7 @@ public class AuthService {
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private JwtService jwtService;
     @Autowired private EmailService emailService;
+    @Autowired private RefreshTokenService refreshTokenService;
 
     @Value("${app.frontend-url}")
     private String frontendUrl;
@@ -52,9 +50,8 @@ public class AuthService {
         user.setEmail(request.getEmail());
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setEmailVerified(false);
-        User savedUser = userRepository.save(user);
 
-        // Send email verification
+        User savedUser = userRepository.save(user);
         createAndSendVerificationToken(savedUser);
     }
 
@@ -74,20 +71,41 @@ public class AuthService {
                     new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
             );
 
-            User authenticatedUser = (User) authentication.getPrincipal();
-            String token = jwtService.generateToken(authenticatedUser);
+            String accessToken = jwtService.generateAccessToken(user);
+            RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
 
             return new AuthResponse(
-                    authenticatedUser.getId(),
-                    authenticatedUser.getFirstName(),
-                    authenticatedUser.getLastName(),
-                    authenticatedUser.getEmail(),
-                    token
+                    user.getId(),
+                    user.getFirstName(),
+                    user.getLastName(),
+                    user.getEmail(),
+                    accessToken,
+                    refreshToken.getToken()
             );
 
         } catch (BadCredentialsException e) {
             throw new BadCredentialsException("Invalid email or password.");
         }
+    }
+
+    // ============================================================
+    // 🔹 REFRESH TOKEN
+    // ============================================================
+    public AuthResponse refreshToken(String refreshTokenStr) {
+        RefreshToken refreshToken = refreshTokenService.getByToken(refreshTokenStr);
+        refreshTokenService.verifyExpiration(refreshToken);
+
+        User user = refreshToken.getUser();
+        String newAccessToken = jwtService.generateAccessToken(user);
+
+        return new AuthResponse(
+                user.getId(),
+                user.getFirstName(),
+                user.getLastName(),
+                user.getEmail(),
+                newAccessToken,
+                refreshTokenStr
+        );
     }
 
     // ============================================================
@@ -106,7 +124,6 @@ public class AuthService {
         User user = verificationToken.getUser();
         user.setEmailVerified(true);
         userRepository.save(user);
-
         tokenRepository.delete(verificationToken);
     }
 
@@ -124,7 +141,7 @@ public class AuthService {
     }
 
     // ============================================================
-    // 🔹 PASSWORD ENCODER HELPER (used in reset-password)
+    // 🔹 PASSWORD ENCODER HELPER
     // ============================================================
     public String encodePassword(String rawPassword) {
         return passwordEncoder.encode(rawPassword);
@@ -139,6 +156,7 @@ public class AuthService {
         verificationToken.setToken(tokenValue);
         verificationToken.setUser(user);
         verificationToken.setExpiresAt(Instant.now().plus(24, ChronoUnit.HOURS));
+
         tokenRepository.save(verificationToken);
 
         String verificationLink = frontendUrl + "/verify-email?token=" + tokenValue;
