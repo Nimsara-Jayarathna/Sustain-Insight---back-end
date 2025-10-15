@@ -98,8 +98,8 @@ google:
   
 jwt:
   secret: ${JWT_KEY}
-  access-expiration-ms: ${JWT_ACCESS_EXPIRATION:30000}        # 15 min default
-  refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION:90000}   # 7 days default
+  access-expiration-ms: ${JWT_ACCESS_EXPIRATION}       
+  refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION}   
 
 security:
   password:
