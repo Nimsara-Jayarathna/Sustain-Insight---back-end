@@ -275,7 +275,7 @@ public class AccountController {
             return ResponseEntity.badRequest()
                     .body(new ErrorResponse("INVALID_OTP", "Invalid or expired OTP."));
 
-        String newToken = jwtService.generateToken(user);
+        String newToken = jwtService.generateAccessToken(user);
         return ResponseEntity.ok(Map.of(
                 "message", "Email updated successfully.",
                 "token", newToken,
