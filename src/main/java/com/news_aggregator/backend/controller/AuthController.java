@@ -154,43 +154,70 @@ public class AuthController {
     }
 
     // ============================================================
-    // 🔹 FORGOT PASSWORD
-    // ============================================================
-    @PostMapping("/forgot-password")
-    public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> body) {
-        try {
-            String email = body.get("email");
-            if (email == null || email.trim().isEmpty()) {
-                return ResponseEntity.badRequest()
-                        .body(new ErrorResponse("MISSING_EMAIL", "Email is required."));
-            }
-
-            Optional<User> userOpt = userRepository.findByEmail(email.trim());
-            if (userOpt.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(new ErrorResponse("USER_NOT_FOUND", "No account found with this email."));
-            }
-
-            User user = userOpt.get();
-
-            // Remove existing tokens
-            tokenRepository.findByUserId(user.getId()).ifPresent(tokenRepository::delete);
-
-            // Create new token (10 min validity)
-            String resetToken = UUID.randomUUID().toString();
-            PasswordResetToken token = new PasswordResetToken(resetToken, user, LocalDateTime.now().plusMinutes(10));
-            tokenRepository.save(token);
-
-            String resetLink = frontendUrl + "/reset-password?token=" + resetToken;
-            emailService.sendPasswordResetEmail(user.getEmail(), resetLink);
-
-            return ResponseEntity.ok(Map.of("message", "Password reset link sent successfully."));
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ErrorResponse("SERVER_ERROR", "Unable to process password reset request."));
+// 🔹 FORGOT PASSWORD
+// ============================================================
+@PostMapping("/forgot-password")
+public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> body) {
+    try {
+        String email = body.get("email");
+        if (email == null || email.trim().isEmpty()) {
+            return ResponseEntity.badRequest()
+                    .body(new ErrorResponse("MISSING_EMAIL", "Email is required."));
         }
+
+        Optional<User> userOpt = userRepository.findByEmail(email.trim());
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ErrorResponse("USER_NOT_FOUND", "No account found with this email address."));
+        }
+
+        User user = userOpt.get();
+
+        // 🔹 Check last token request (by most recent createdAt)
+        Optional<PasswordResetToken> existingTokenOpt =
+                tokenRepository.findTopByUserIdOrderByCreatedAtDesc(user.getId());
+
+        if (existingTokenOpt.isPresent()) {
+            PasswordResetToken existingToken = existingTokenOpt.get();
+
+            // Enforce 2-minute cooldown before issuing new token
+            if (existingToken.getCreatedAt() != null &&
+                existingToken.getCreatedAt().isAfter(LocalDateTime.now().minusMinutes(2))) {
+
+                return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                        .body(new ErrorResponse("RATE_LIMIT",
+                                "A reset link was already sent recently. Please wait 2 minutes before requesting another one."));
+            }
+
+            // Remove previous token if expired or cooldown window passed
+            tokenRepository.delete(existingToken);
+        }
+
+        // 🔹 Create new token (10-minute validity)
+        String resetToken = UUID.randomUUID().toString();
+        PasswordResetToken token = new PasswordResetToken(
+                resetToken,
+                user,
+                LocalDateTime.now().plusMinutes(10)
+        );
+        tokenRepository.save(token);
+
+        // 🔹 Build reset link and send email
+        String resetLink = frontendUrl + "/reset-password?token=" + resetToken;
+        emailService.sendPasswordResetEmail(user.getEmail(), resetLink);
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Password reset link sent successfully. Please check your email."
+        ));
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ErrorResponse("SERVER_ERROR",
+                        "Unable to process password reset request at the moment."));
     }
+}
+
 
     // ============================================================
     // 🔹 RESET PASSWORD
