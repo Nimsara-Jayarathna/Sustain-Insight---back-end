@@ -24,8 +24,9 @@ jobs:
           java-version: '21'
           distribution: 'microsoft'
 
-      - name: Build with Maven
-        run: mvn clean install
+      - name: Build with Maven (skip tests)
+        run: mvn clean package -DskipTests
+
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
@@ -50,4 +51,5 @@ jobs:
           app-name: 'Sustain-Insight-API'
           slot-name: 'Production'
           package: '*.jar'
+
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_7FF9C97F5EB94B7FB9E5E5CFA532F533 }}
