@@ -19,6 +19,9 @@ public class PasswordResetToken {
     private User user;
 
     @Column(nullable = false)
+    private LocalDateTime createdAt;
+
+    @Column(nullable = false)
     private LocalDateTime expiresAt;
 
     public PasswordResetToken() {}
@@ -26,11 +29,14 @@ public class PasswordResetToken {
     public PasswordResetToken(String token, User user, LocalDateTime expiresAt) {
         this.token = token;
         this.user = user;
+        this.createdAt = LocalDateTime.now();
         this.expiresAt = expiresAt;
     }
 
+    public Long getId() { return id; }
     public String getToken() { return token; }
     public User getUser() { return user; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getExpiresAt() { return expiresAt; }
 
     public boolean isExpired() {

@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 import java.util.Random;
 
@@ -25,22 +26,50 @@ public class EmailChangeService {
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
 
+    // 🔹 Configurable cooldown (in seconds)
+    private static final long OTP_COOLDOWN_SECONDS = 60L;
+
     // -----------------------------------------------------
     // STEP 1️⃣  Send OTP to CURRENT email for verification
     // -----------------------------------------------------
     @Transactional
-    public void sendOtpToCurrentEmail(User user) {
-        String otp = generateOtp();
-        String hashedOtp = passwordEncoder.encode(otp);
+public void sendOtpToCurrentEmail(User user) {
+    Optional<EmailChangeOtp> lastOtpOpt =
+            otpRepository.findTopByUserAndTypeOrderByExpiresAtDesc(user, "CURRENT");
 
-        EmailChangeOtp otpEntity = EmailChangeOtp.create(
-                user, hashedOtp, "CURRENT", null
-        );
-        otpRepository.save(otpEntity);
+    if (lastOtpOpt.isPresent()) {
+        EmailChangeOtp last = lastOtpOpt.get();
+        if (!last.isExpired() && last.getCreatedAt() != null) {
+            long secondsSinceLast = ChronoUnit.SECONDS.between(last.getCreatedAt(), Instant.now());
+            if (secondsSinceLast < OTP_COOLDOWN_SECONDS) {
+                long remaining = OTP_COOLDOWN_SECONDS - secondsSinceLast;
 
-        // Use the new, clean method from EmailService
-        emailService.sendCurrentEmailVerificationOtp(user.getEmail(), otp);
+                // 🕒 Friendly time display
+                String formattedWait = remaining < 60
+                        ? remaining + " seconds"
+                        : (remaining / 60) + " minute" + (remaining / 60 > 1 ? "s" : "");
+
+                String msg = "Please wait " + formattedWait + " before requesting a new OTP.";
+
+                log.warn("⏳ Cooldown active for CURRENT email OTP: {}s remaining for user {}", remaining, user.getId());
+                throw new IllegalStateException(msg);
+            }
+        }
     }
+
+    String otp = generateOtp();
+    String hashedOtp = passwordEncoder.encode(otp);
+
+    EmailChangeOtp otpEntity = EmailChangeOtp.create(
+            user, hashedOtp, "CURRENT", null
+    );
+    otpRepository.save(otpEntity);
+
+    emailService.sendCurrentEmailVerificationOtp(user.getEmail(), otp);
+
+    log.info("📨 Sent CURRENT email verification OTP to {}", user.getEmail());
+}
+
 
     // -----------------------------------------------------
     // STEP 2️⃣  Verify OTP for CURRENT email
@@ -54,11 +83,12 @@ public class EmailChangeService {
 
         EmailChangeOtp entity = latestOtp.get();
         if (entity.isUsed() || entity.isExpired()) return false;
-
         if (!passwordEncoder.matches(otp, entity.getOtpHash())) return false;
 
         entity.setUsed(true);
         otpRepository.save(entity);
+
+        log.info("✅ Verified CURRENT email OTP for user {}", user.getEmail());
         return true;
     }
 
@@ -66,18 +96,43 @@ public class EmailChangeService {
     // STEP 3️⃣  Send OTP to NEW email for confirmation
     // -----------------------------------------------------
     @Transactional
-    public void sendOtpToNewEmail(User user, String newEmail) {
-        String otp = generateOtp();
-        String hashedOtp = passwordEncoder.encode(otp);
+public void sendOtpToNewEmail(User user, String newEmail) {
+    Optional<EmailChangeOtp> lastOtpOpt =
+            otpRepository.findTopByUserAndTypeOrderByExpiresAtDesc(user, "NEW");
 
-        EmailChangeOtp otpEntity = EmailChangeOtp.create(
-                user, hashedOtp, "NEW", newEmail
-        );
-        otpRepository.save(otpEntity);
+    if (lastOtpOpt.isPresent()) {
+        EmailChangeOtp last = lastOtpOpt.get();
+        if (!last.isExpired() && last.getCreatedAt() != null) {
+            long secondsSinceLast = ChronoUnit.SECONDS.between(last.getCreatedAt(), Instant.now());
+            if (secondsSinceLast < OTP_COOLDOWN_SECONDS) {
+                long remaining = OTP_COOLDOWN_SECONDS - secondsSinceLast;
 
-        // Use the new, clean method from EmailService
-        emailService.sendNewEmailConfirmationOtp(newEmail, otp);
+                // Format friendly time (seconds → mm:ss)
+                String formattedWait = remaining < 60
+                        ? remaining + " seconds"
+                        : (remaining / 60) + " minute" + (remaining / 60 > 1 ? "s" : "");
+
+                String msg = "Please wait " + formattedWait + " before requesting a new OTP.";
+
+                log.warn("⏳ Cooldown active for NEW email OTP: {}s remaining for user {}", remaining, user.getId());
+                throw new IllegalStateException(msg);
+            }
+        }
     }
+
+    String otp = generateOtp();
+    String hashedOtp = passwordEncoder.encode(otp);
+
+    EmailChangeOtp otpEntity = EmailChangeOtp.create(
+            user, hashedOtp, "NEW", newEmail
+    );
+    otpRepository.save(otpEntity);
+
+    emailService.sendNewEmailConfirmationOtp(newEmail, otp);
+
+    log.info("📨 Sent NEW email verification OTP to {}", newEmail);
+}
+
 
     // -----------------------------------------------------
     // STEP 4️⃣  Verify OTP for NEW email & finalize change
@@ -95,17 +150,15 @@ public class EmailChangeService {
         if (!entity.getNewEmail().equalsIgnoreCase(newEmail)) return false;
         if (!passwordEncoder.matches(otp, entity.getOtpHash())) return false;
 
-        // ✅ Mark OTP as used
         entity.setUsed(true);
         otpRepository.save(entity);
 
-        // ✅ Update user's email
         user.setEmail(newEmail);
         userRepository.save(user);
 
-        // ✅ Notify user with the new, clean method
         emailService.sendEmailChangeSuccessNotification(newEmail);
 
+        log.info("✅ Email change completed for user {}, new email: {}", user.getId(), newEmail);
         return true;
     }
 
@@ -120,11 +173,10 @@ public class EmailChangeService {
     // 🧹 Scheduled Cleanup Job — Runs Every Hour
     // -----------------------------------------------------
     @Transactional
-    @Scheduled(cron = "0 0 * * * *") // Every hour, on the hour
+    @Scheduled(cron = "0 0 * * * *")
     public void cleanupExpiredOtps() {
         Instant now = Instant.now();
         int deleted = otpRepository.deleteAllByExpiresAtBeforeOrUsedTrue(now);
-
         if (deleted > 0) {
             log.info("🧹 Cleaned up {} expired/used OTP records at {}", deleted, now);
         }
