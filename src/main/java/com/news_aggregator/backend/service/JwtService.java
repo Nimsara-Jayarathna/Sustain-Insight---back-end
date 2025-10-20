@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 
 @Service
@@ -35,11 +36,14 @@ public class JwtService {
     // ----------------------------------------------------------------
     // 🔹 Access / Refresh Token Generation
     // ----------------------------------------------------------------
-    public String generateAccessToken(User user) {
+    public String generateAccessToken(User user, UUID sessionId) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("firstName", user.getFirstName());
         claims.put("lastName", user.getLastName());
         claims.put("type", "access");
+        if (sessionId != null) {
+            claims.put("sid", sessionId.toString());
+        }
         return createToken(claims, user.getEmail(), accessExpirationMs);
     }
 
@@ -82,11 +86,25 @@ public class JwtService {
         return extractClaim(token, Claims::getExpiration);
     }
 
-    private <T> T extractClaim(String token, Function<Claims, T> resolver) {
+    public <T> T extractClaim(String token, Function<Claims, T> resolver) {
         final Claims claims = Jwts.parser()
                 .setSigningKey(secret)
                 .parseClaimsJws(token)
                 .getBody();
         return resolver.apply(claims);
+    }
+
+    public UUID extractSessionId(String token) {
+        return extractClaim(token, claims -> {
+            Object sid = claims.get("sid");
+            if (sid instanceof String s) {
+                try {
+                    return UUID.fromString(s);
+                } catch (IllegalArgumentException ignored) {
+                    return null;
+                }
+            }
+            return null;
+        });
     }
 }

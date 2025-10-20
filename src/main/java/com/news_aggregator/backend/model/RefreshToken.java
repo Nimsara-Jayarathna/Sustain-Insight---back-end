@@ -1,5 +1,6 @@
 package com.news_aggregator.backend.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.Instant;
 
@@ -24,6 +25,10 @@ public class RefreshToken {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now(); // ✅ fixes your null issue
 
+    @JsonIgnore
+    @OneToOne(mappedBy = "refreshToken", fetch = FetchType.LAZY)
+    private UserSession session;
+
     // --- Getters & Setters ---
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -39,4 +44,7 @@ public class RefreshToken {
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+
+    public UserSession getSession() { return session; }
+    public void setSession(UserSession session) { this.session = session; }
 }

@@ -1,8 +1,10 @@
 package com.news_aggregator.backend.service;
 
+import com.news_aggregator.backend.exception.SessionExpiredException;
 import com.news_aggregator.backend.model.EmailVerificationToken;
 import com.news_aggregator.backend.model.RefreshToken;
 import com.news_aggregator.backend.model.User;
+import com.news_aggregator.backend.model.UserSession;
 import com.news_aggregator.backend.payload.AuthResponse;
 import com.news_aggregator.backend.payload.LoginRequest;
 import com.news_aggregator.backend.payload.SignupRequest;
@@ -11,7 +13,6 @@ import com.news_aggregator.backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.*;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +31,7 @@ public class AuthService {
     @Autowired private JwtService jwtService;
     @Autowired private EmailService emailService;
     @Autowired private RefreshTokenService refreshTokenService;
+    @Autowired private UserSessionService userSessionService;
 
     @Value("${app.frontend-url}")
     private String frontendUrl;
@@ -58,7 +60,11 @@ public class AuthService {
     // ============================================================
     // 🔹 LOGIN
     // ============================================================
-    public AuthResponse login(LoginRequest request) {
+    public AuthResponse login(LoginRequest request,
+                              String ipAddress,
+                              String deviceInfo,
+                              String userAgent,
+                              String location) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new BadCredentialsException("Invalid email or password."));
 
@@ -67,12 +73,21 @@ public class AuthService {
         }
 
         try {
-            Authentication authentication = authenticationManager.authenticate(
+            authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
             );
 
-            String accessToken = jwtService.generateAccessToken(user);
             RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
+            UserSession session = userSessionService.createSession(
+                    user,
+                    refreshToken,
+                    ipAddress,
+                    deviceInfo,
+                    userAgent,
+                    location
+            );
+
+            String accessToken = jwtService.generateAccessToken(user, session.getId());
 
             return new AuthResponse(
                     user.getId(),
@@ -80,7 +95,8 @@ public class AuthService {
                     user.getLastName(),
                     user.getEmail(),
                     accessToken,
-                    refreshToken.getToken()
+                    refreshToken.getToken(),
+                    session.getId()
             );
 
         } catch (BadCredentialsException e) {
@@ -96,7 +112,15 @@ public class AuthService {
         refreshTokenService.verifyExpiration(refreshToken);
 
         User user = refreshToken.getUser();
-        String newAccessToken = jwtService.generateAccessToken(user);
+        UserSession session = refreshToken.getSession();
+
+        if (session == null || !session.isActive()) {
+            throw new SessionExpiredException("Session expired, please login again");
+        }
+
+        userSessionService.updateLastActive(session.getId());
+
+        String newAccessToken = jwtService.generateAccessToken(user, session.getId());
 
         return new AuthResponse(
                 user.getId(),
@@ -104,7 +128,8 @@ public class AuthService {
                 user.getLastName(),
                 user.getEmail(),
                 newAccessToken,
-                refreshTokenStr
+                refreshTokenStr,
+                session.getId()
         );
     }
 

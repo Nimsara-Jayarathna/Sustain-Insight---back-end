@@ -2,8 +2,11 @@ package com.news_aggregator.backend.service;
 
 import com.news_aggregator.backend.model.RefreshToken;
 import com.news_aggregator.backend.model.User;
+import com.news_aggregator.backend.model.UserSession;
 import com.news_aggregator.backend.repository.RefreshTokenRepository;
-import com.news_aggregator.backend.repository.UserRepository;
+import com.news_aggregator.backend.repository.UserSessionRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,15 +17,18 @@ import java.util.UUID;
 @Service
 public class RefreshTokenService {
 
+    private static final Logger log = LoggerFactory.getLogger(RefreshTokenService.class);
+
     private final RefreshTokenRepository refreshTokenRepository;
-    private final UserRepository userRepository;
+    private final UserSessionRepository userSessionRepository;
 
     @Value("${jwt.refresh-expiration-ms:604800000}") // Default: 7 days
     private long refreshTokenDurationMs;
 
-    public RefreshTokenService(RefreshTokenRepository refreshTokenRepository, UserRepository userRepository) {
+    public RefreshTokenService(RefreshTokenRepository refreshTokenRepository,
+                               UserSessionRepository userSessionRepository) {
         this.refreshTokenRepository = refreshTokenRepository;
-        this.userRepository = userRepository;
+        this.userSessionRepository = userSessionRepository;
     }
 
     // ============================================================
@@ -30,9 +36,7 @@ public class RefreshTokenService {
     // ============================================================
     @Transactional
     public RefreshToken createRefreshToken(User user) {
-        // Optional: Remove existing token(s)
-        refreshTokenRepository.deleteByUser(user);
-
+        log.debug("Creating refresh token for user {}", user.getId());
         RefreshToken token = new RefreshToken();
         token.setUser(user);
         token.setToken(UUID.randomUUID().toString());
@@ -46,7 +50,8 @@ public class RefreshTokenService {
     // 🔹 GET BY TOKEN STRING
     // ============================================================
     public RefreshToken getByToken(String token) {
-        return refreshTokenRepository.findByToken(token)
+        log.trace("Fetching refresh token by token string");
+        return refreshTokenRepository.findDetailedByToken(token)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid refresh token."));
     }
 
@@ -55,7 +60,8 @@ public class RefreshTokenService {
     // ============================================================
     public RefreshToken verifyExpiration(RefreshToken token) {
         if (token.getExpiryDate().isBefore(Instant.now())) {
-            refreshTokenRepository.delete(token);
+            log.info("Refresh token {} expired at {}", token.getId(), token.getExpiryDate());
+            deleteTokenAndDeactivateSession(token);
             throw new IllegalArgumentException("Refresh token expired. Please login again.");
         }
         return token;
@@ -64,15 +70,57 @@ public class RefreshTokenService {
     // ============================================================
     // 🔹 DELETE TOKEN
     // ============================================================
+    @Transactional
     public void deleteByToken(String token) {
-        refreshTokenRepository.findByToken(token)
-                .ifPresent(refreshTokenRepository::delete);
+        log.debug("Deleting refresh token by token value");
+        refreshTokenRepository.findDetailedByToken(token).ifPresent(this::deleteTokenAndDeactivateSession);
     }
 
     // ============================================================
     // 🔹 DELETE BY USER
     // ============================================================
+    @Transactional
     public void deleteByUser(User user) {
+        log.info("Revoking all sessions for user {}", user.getId());
+        userSessionRepository.deactivateAllByUserId(user.getId(), Instant.now());
         refreshTokenRepository.deleteByUser(user);
+    }
+
+    // ============================================================
+    // 🔹 REVOKE SINGLE SESSION
+    // ============================================================
+    @Transactional
+    public void revokeSession(UUID sessionId) {
+        log.debug("Revoking single session {}", sessionId);
+        UserSession session = userSessionRepository.findDetailedById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("Session not found"));
+
+        RefreshToken refreshToken = session.getRefreshToken();
+        Instant now = Instant.now();
+
+        session.setActive(false);
+        session.setLastActiveAt(now);
+        if (session.getExpiresAt() == null) {
+            session.setExpiresAt(now);
+        }
+        session.setRefreshToken(null);
+        userSessionRepository.save(session);
+        log.trace("Session {} marked inactive and detached from refresh token", sessionId);
+
+        if (refreshToken != null) {
+            refreshToken.setSession(null);
+            refreshTokenRepository.delete(refreshToken);
+            log.trace("Refresh token {} deleted for session {}", refreshToken.getId(), sessionId);
+        }
+    }
+
+    @Transactional
+    protected void deleteTokenAndDeactivateSession(RefreshToken refreshToken) {
+        if (refreshToken.getSession() != null) {
+            log.trace("Deactivating session {} while deleting refresh token {}", refreshToken.getSession().getId(), refreshToken.getId());
+            userSessionRepository.deactivateById(refreshToken.getSession().getId(), Instant.now());
+        }
+        log.trace("Deleting refresh token {}", refreshToken.getId());
+        refreshTokenRepository.delete(refreshToken);
     }
 }
