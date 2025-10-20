@@ -7,6 +7,7 @@ import com.news_aggregator.backend.model.PasswordResetToken;
 import com.news_aggregator.backend.model.User;
 import com.news_aggregator.backend.repository.PasswordResetTokenRepository;
 import com.news_aggregator.backend.repository.UserRepository;
+import com.news_aggregator.backend.util.DeviceInfoExtractor;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -60,16 +61,19 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request, HttpServletRequest httpRequest) {
         try {
-            String userAgentHeader = Optional.ofNullable(request.getUserAgent())
+            String userAgentHeader = Optional.ofNullable(httpRequest.getHeader("User-Agent"))
                     .filter(s -> !s.isBlank())
-                    .orElse(httpRequest.getHeader("User-Agent"));
+                    .orElse(Optional.ofNullable(request.getUserAgent()).orElse(""));
+
+            String ipAddress = DeviceInfoExtractor.getClientIp(httpRequest);
+            String deviceInfo = DeviceInfoExtractor.parseDeviceInfo(userAgentHeader);
 
             AuthResponse authResponse = authService.login(
                     request,
-                    resolveClientIp(httpRequest),
-                    request.getDeviceInfo(),
+                    ipAddress,
+                    deviceInfo,
                     userAgentHeader,
-                    request.getLocation()
+                    null
             );
 
             // 🔐 Set refresh token as HttpOnly Secure cookie
@@ -133,14 +137,6 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ErrorResponse("SERVER_ERROR", "Failed to logout."));
         }
-    }
-
-    private String resolveClientIp(HttpServletRequest request) {
-        String header = request.getHeader("X-Forwarded-For");
-        if (header != null && !header.isBlank()) {
-            return header.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
     }
 
     // ============================================================

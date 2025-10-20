@@ -3,8 +3,9 @@ package com.news_aggregator.backend.controller;
 import com.news_aggregator.backend.model.User;
 import com.news_aggregator.backend.model.UserSession;
 import com.news_aggregator.backend.payload.ErrorResponse;
-import com.news_aggregator.backend.payload.UserSessionResponse;
+import com.news_aggregator.backend.payload.UserSessionResponseDTO;
 import com.news_aggregator.backend.service.RefreshTokenService;
+import com.news_aggregator.backend.service.UserSessionMapper;
 import com.news_aggregator.backend.service.UserSessionService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -35,31 +36,23 @@ public class SessionController {
 
     private final UserSessionService userSessionService;
     private final RefreshTokenService refreshTokenService;
+    private final UserSessionMapper userSessionMapper;
 
     public SessionController(UserSessionService userSessionService,
-                             RefreshTokenService refreshTokenService) {
+                             RefreshTokenService refreshTokenService,
+                             UserSessionMapper userSessionMapper) {
         this.userSessionService = userSessionService;
         this.refreshTokenService = refreshTokenService;
+        this.userSessionMapper = userSessionMapper;
     }
 
     @GetMapping
-    public ResponseEntity<List<UserSessionResponse>> listActiveSessions(@AuthenticationPrincipal User user,
-                                                                        HttpServletRequest request) {
+    public ResponseEntity<List<UserSessionResponseDTO>> listActiveSessions(@AuthenticationPrincipal User user,
+                                                                           HttpServletRequest request) {
         UUID currentSessionId = (UUID) request.getAttribute("sessionId");
-        List<UserSessionResponse> sessions = userSessionService.findByUserId(user.getId()).stream()
+        List<UserSessionResponseDTO> sessions = userSessionService.findByUserId(user.getId()).stream()
                 .filter(UserSession::isActive)
-                .map(session -> new UserSessionResponse(
-                        session.getId(),
-                        session.getDeviceInfo(),
-                        session.getIpAddress(),
-                        session.getUserAgent(),
-                        session.getLocation(),
-                        session.getCreatedAt(),
-                        session.getLastActiveAt(),
-                        session.getExpiresAt(),
-                        session.isActive(),
-                        session.getId().equals(currentSessionId)
-                ))
+                .map(session -> userSessionMapper.mapToDto(session, currentSessionId))
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(sessions);

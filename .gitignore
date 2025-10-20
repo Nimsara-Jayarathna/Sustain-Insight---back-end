@@ -42,3 +42,4 @@ application.jar
 Procfile
 *.zip
 deploy-eb.sh
+a.sh
