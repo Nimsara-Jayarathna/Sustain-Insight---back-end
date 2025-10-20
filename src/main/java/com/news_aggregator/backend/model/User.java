@@ -1,5 +1,6 @@
 package com.news_aggregator.backend.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -55,6 +56,10 @@ public class User implements UserDetails {
     )
     private Set<Source> preferredSources = new HashSet<>();
 
+    @JsonIgnore
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = false)
+    private Set<UserSession> sessions = new HashSet<>();
+
     // Getters & Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -88,6 +93,9 @@ public class User implements UserDetails {
 
     public Set<Source> getPreferredSources() { return preferredSources; }
     public void setPreferredSources(Set<Source> preferredSources) { this.preferredSources = preferredSources; }
+
+    public Set<UserSession> getSessions() { return sessions; }
+    public void setSessions(Set<UserSession> sessions) { this.sessions = sessions; }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

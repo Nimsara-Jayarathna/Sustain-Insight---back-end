@@ -1,5 +1,6 @@
 package com.news_aggregator.backend.controller;
 
+import com.news_aggregator.backend.exception.SessionExpiredException;
 import com.news_aggregator.backend.payload.*;
 import com.news_aggregator.backend.service.*;
 import com.news_aggregator.backend.model.PasswordResetToken;
@@ -10,6 +11,7 @@ import com.news_aggregator.backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.web.bind.annotation.*;
@@ -56,9 +58,19 @@ public class AuthController {
     // 🔹 LOGIN
     // ============================================================
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<?> login(@RequestBody LoginRequest request, HttpServletRequest httpRequest) {
         try {
-            AuthResponse authResponse = authService.login(request);
+            String userAgentHeader = Optional.ofNullable(request.getUserAgent())
+                    .filter(s -> !s.isBlank())
+                    .orElse(httpRequest.getHeader("User-Agent"));
+
+            AuthResponse authResponse = authService.login(
+                    request,
+                    resolveClientIp(httpRequest),
+                    request.getDeviceInfo(),
+                    userAgentHeader,
+                    request.getLocation()
+            );
 
             // 🔐 Set refresh token as HttpOnly Secure cookie
             ResponseCookie cookie = ResponseCookie.from("refreshToken", authResponse.getRefreshToken())
@@ -77,6 +89,7 @@ public class AuthController {
                             "lastName", authResponse.getLastName(),
                             "email", authResponse.getEmail(),
                             "accessToken", authResponse.getAccessToken(),
+                            "sessionId", authResponse.getSessionId(),
                             "message", "Login successful."
                     ));
 
@@ -97,8 +110,12 @@ public class AuthController {
     // 🔹 LOGOUT
     // ============================================================
     @PostMapping("/logout")
-    public ResponseEntity<?> logout() {
+    public ResponseEntity<?> logout(@CookieValue(value = "refreshToken", required = false) String refreshToken) {
         try {
+            if (refreshToken != null && !refreshToken.isBlank()) {
+                refreshTokenService.deleteByToken(refreshToken);
+            }
+
             // Delete the refresh cookie
             ResponseCookie deleteCookie = ResponseCookie.from("refreshToken", "")
                     .httpOnly(true)
@@ -116,6 +133,14 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ErrorResponse("SERVER_ERROR", "Failed to logout."));
         }
+    }
+
+    private String resolveClientIp(HttpServletRequest request) {
+        String header = request.getHeader("X-Forwarded-For");
+        if (header != null && !header.isBlank()) {
+            return header.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 
     // ============================================================
@@ -275,7 +300,22 @@ public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> body) {
 
         try {
             AuthResponse response = authService.refreshToken(refreshToken);
-            return ResponseEntity.ok(Map.of("accessToken", response.getAccessToken()));
+            return ResponseEntity.ok(Map.of(
+                    "accessToken", response.getAccessToken(),
+                    "sessionId", response.getSessionId()
+            ));
+        } catch (SessionExpiredException e) {
+            ResponseCookie deleteCookie = ResponseCookie.from("refreshToken", "")
+                    .httpOnly(true)
+                    .secure(true)
+                    .path("/api/auth")
+                    .sameSite("Strict")
+                    .maxAge(0)
+                    .build();
+
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .header(HttpHeaders.SET_COOKIE, deleteCookie.toString())
+                    .body(new ErrorResponse("SESSION_EXPIRED", e.getMessage()));
         } catch (IllegalArgumentException e) {
             ResponseCookie deleteCookie = ResponseCookie.from("refreshToken", "")
                     .httpOnly(true)
