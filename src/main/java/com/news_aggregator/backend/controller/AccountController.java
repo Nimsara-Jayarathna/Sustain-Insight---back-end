@@ -15,6 +15,7 @@ import com.news_aggregator.backend.service.EmailChangeService;
 import com.news_aggregator.backend.service.EmailService;
 import com.news_aggregator.backend.service.JwtService;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +27,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.HashSet;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @RestController
@@ -97,6 +99,8 @@ public class AccountController {
                 user.setFirstName(request.getFirstName());
             if (request.getLastName() != null && !request.getLastName().isBlank())
                 user.setLastName(request.getLastName());
+            if (request.getJobTitle() != null && !request.getJobTitle().isBlank())
+                user.setJobTitle(request.getJobTitle());
 
             if (request.getCategoryIds() != null)
                 user.setPreferredCategories(new HashSet<>(categoryRepository.findAllById(request.getCategoryIds())));
@@ -253,7 +257,8 @@ public class AccountController {
     @PostMapping("/email-change/confirm")
     public ResponseEntity<?> confirmNewEmailChange(
             @AuthenticationPrincipal UserDetails userDetails,
-            @RequestBody Map<String, String> body
+            @RequestBody Map<String, String> body,
+            HttpServletRequest request
     ) {
         if (userDetails == null)
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -273,11 +278,18 @@ public class AccountController {
             return ResponseEntity.badRequest()
                     .body(new ErrorResponse("INVALID_OTP", "Invalid or expired OTP."));
 
-        String newToken = jwtService.generateToken(user);
+        UUID sessionId = (UUID) request.getAttribute("sessionId");
+        if (sessionId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ErrorResponse("SESSION_MISSING", "Session context unavailable."));
+        }
+
+        String newToken = jwtService.generateAccessToken(user, sessionId);
         return ResponseEntity.ok(Map.of(
                 "message", "Email updated successfully.",
                 "token", newToken,
-                "email", user.getEmail()
+                "email", user.getEmail(),
+                "sessionId", sessionId
         ));
     }
 
@@ -290,6 +302,7 @@ public class AccountController {
                 user.getFirstName(),
                 user.getLastName(),
                 user.getEmail(),
+                user.getJobTitle(),
                 user.getPreferredCategories().stream()
                         .map(c -> new CategoryDto(c.getId(), c.getName()))
                         .collect(Collectors.toList()),

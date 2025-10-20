@@ -5,6 +5,7 @@ import java.util.List;
 public class PreferenceUpdateRequest {
     private String firstName;
     private String lastName;
+    private String jobTitle;
     private List<Long> categoryIds;
     private List<Long> sourceIds;
 
@@ -13,6 +14,9 @@ public class PreferenceUpdateRequest {
 
     public String getLastName() { return lastName; }
     public void setLastName(String lastName) { this.lastName = lastName; }
+
+    public String getJobTitle() { return jobTitle; }
+    public void setJobTitle(String jobTitle) { this.jobTitle = jobTitle; }
 
     public List<Long> getCategoryIds() { return categoryIds; }
     public void setCategoryIds(List<Long> categoryIds) { this.categoryIds = categoryIds; }

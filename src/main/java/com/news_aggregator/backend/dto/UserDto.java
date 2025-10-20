@@ -7,18 +7,20 @@ public class UserDto {
     private String firstName;
     private String lastName;
     private String email;
+    private String jobTitle;
     private List<CategoryDto> preferredCategories;
     private List<SourceDto> preferredSources;
 
     public UserDto() {}
 
-    public UserDto(Long id, String firstName, String lastName, String email,
+    public UserDto(Long id, String firstName, String lastName, String email, String jobTitle,
                    List<CategoryDto> preferredCategories,
                    List<SourceDto> preferredSources) {
         this.id = id;
         this.firstName = firstName;
         this.lastName = lastName;
         this.email = email;
+        this.jobTitle = jobTitle;
         this.preferredCategories = preferredCategories;
         this.preferredSources = preferredSources;
     }
@@ -34,6 +36,9 @@ public class UserDto {
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
+
+    public String getJobTitle() { return jobTitle; }
+    public void setJobTitle(String jobTitle) { this.jobTitle = jobTitle; }
 
     public List<CategoryDto> getPreferredCategories() { return preferredCategories; }
     public void setPreferredCategories(List<CategoryDto> preferredCategories) { this.preferredCategories = preferredCategories; }

@@ -1,7 +1,9 @@
 package com.news_aggregator.backend.controller;
 
+import com.news_aggregator.backend.dto.ArticleContentDto;
 import com.news_aggregator.backend.dto.ArticleDto;
 import com.news_aggregator.backend.dto.PagedResponse;
+import com.news_aggregator.backend.service.ArticleOrchestrationService;
 import com.news_aggregator.backend.service.ArticleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,6 +22,7 @@ import java.util.List;
 public class AuthenticatedArticleController {
 
     private final ArticleService articleService;
+    private final ArticleOrchestrationService articleOrchestrationService;
 
     // 🔹 Pagination settings
     @Value("${pagination.defaultSize:10}")
@@ -66,5 +69,13 @@ public class AuthenticatedArticleController {
                 : Math.min(size, maxPageSize);
 
         return ResponseEntity.ok(articleService.getForYouFeed(userDetails, page, pageSize));
+    }
+
+    // =====================================================
+    // 🔹 Get Article Content (Authenticated)
+    // =====================================================
+    @GetMapping("/{id}/content")
+    public ResponseEntity<ArticleContentDto> getArticleContent(@PathVariable Long id) {
+        return ResponseEntity.ok(articleOrchestrationService.getArticleContent(id));
     }
 }

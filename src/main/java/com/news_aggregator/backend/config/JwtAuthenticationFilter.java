@@ -1,6 +1,9 @@
 package com.news_aggregator.backend.config;
 
+import com.news_aggregator.backend.exception.SessionExpiredException;
+import com.news_aggregator.backend.model.UserSession;
 import com.news_aggregator.backend.service.JwtService;
+import com.news_aggregator.backend.service.UserSessionService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -13,16 +16,23 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.time.Instant;
+import java.util.Optional;
+import java.util.UUID;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
+    private final UserSessionService userSessionService;
 
-    public JwtAuthenticationFilter(JwtService jwtService, UserDetailsService userDetailsService) {
+    public JwtAuthenticationFilter(JwtService jwtService,
+                                   UserDetailsService userDetailsService,
+                                   UserSessionService userSessionService) {
         this.jwtService = jwtService;
         this.userDetailsService = userDetailsService;
+        this.userSessionService = userSessionService;
     }
 
     @Override
@@ -39,22 +49,55 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         String jwt = authHeader.substring(7);
-        String username = jwtService.extractUsername(jwt);
 
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
+        try {
+            String username = jwtService.extractUsername(jwt);
+            UUID sessionId = jwtService.extractSessionId(jwt);
 
-            if (jwtService.validateToken(jwt, userDetails)) {
-                UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(
-                                userDetails,
-                                null,
-                                userDetails.getAuthorities()
-                        );
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+            if (sessionId == null) {
+                throw new SessionExpiredException("Session expired, please login again");
             }
-        }
 
-        filterChain.doFilter(request, response);
+            Optional<UserSession> sessionOpt = userSessionService.findById(sessionId);
+            UserSession session = sessionOpt.orElseThrow(() ->
+                    new SessionExpiredException("Session expired, please login again"));
+
+            if (!session.isActive()) {
+                throw new SessionExpiredException("Session expired, please login again");
+            }
+
+            if (session.getExpiresAt() != null && session.getExpiresAt().isBefore(Instant.now())) {
+                userSessionService.deactivateSession(sessionId);
+                throw new SessionExpiredException("Session expired, please login again");
+            }
+
+            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
+
+                if (jwtService.validateToken(jwt, userDetails)) {
+                    userSessionService.updateLastActive(sessionId);
+                    request.setAttribute("sessionId", sessionId);
+
+                    UsernamePasswordAuthenticationToken authToken =
+                            new UsernamePasswordAuthenticationToken(
+                                    userDetails,
+                                    null,
+                                    userDetails.getAuthorities()
+                            );
+                    authToken.setDetails(sessionId);
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                }
+            }
+
+            filterChain.doFilter(request, response);
+        } catch (SessionExpiredException e) {
+            writeSessionExpiredResponse(response, e.getMessage());
+        }
+    }
+
+    private void writeSessionExpiredResponse(HttpServletResponse response, String message) throws IOException {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType("application/json");
+        response.getWriter().write("{\"message\":\"" + message + "\"}");
     }
 }

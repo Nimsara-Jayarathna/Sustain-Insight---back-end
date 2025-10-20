@@ -75,6 +75,15 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
+    		<groupId>org.springframework.security</groupId>
+    		<artifactId>spring-security-crypto</artifactId>
+		</dependency>
+		<dependency>
+    		<groupId>org.bouncycastle</groupId>
+    		<artifactId>bcprov-jdk15on</artifactId>
+    		<version>1.70</version>
+		</dependency>
+		<dependency>
 			<groupId>org.springframework.security</groupId>
 			<artifactId>spring-security-test</artifactId>
 			<scope>test</scope>
@@ -100,46 +109,81 @@
   			<groupId>org.springframework.boot</groupId>
   			<artifactId>spring-boot-starter-mail</artifactId>
 		</dependency>
-		<!-- Google API Client for Java -->
+		<dependency>
+    		<groupId>com.google.api-client</groupId>
+    		<artifactId>google-api-client</artifactId>
+    		<version>2.2.0</version>
+		</dependency>
+		<dependency>
+    		<groupId>com.google.oauth-client</groupId>
+    		<artifactId>google-oauth-client-jetty</artifactId>
+    		<version>1.34.1</version>
+		</dependency>
+		<dependency>
+			<groupId>eu.bitwalker</groupId>
+			<artifactId>UserAgentUtils</artifactId>
+			<version>1.21</version>
+		</dependency>
+		<dependency>
+    		<groupId>com.google.apis</groupId>
+    		<artifactId>google-api-services-gmail</artifactId>
+    		<version>v1-rev20220404-2.0.0</version>
+		</dependency>
+		<dependency>
+    		<groupId>jakarta.mail</groupId>
+    		<artifactId>jakarta.mail-api</artifactId>
+    		<version>2.1.2</version>
+		</dependency>
+		<dependency>
+    		<groupId>org.eclipse.angus</groupId>
+    		<artifactId>angus-mail</artifactId>
+    		<version>2.0.2</version>
+		</dependency>
+		<dependency>
+    		<groupId>commons-codec</groupId>
+    		<artifactId>commons-codec</artifactId>
+    		<version>1.15</version>
+		</dependency>
+		<dependency>
+    		<groupId>com.vladmihalcea</groupId>
+    		<artifactId>hibernate-types-60</artifactId>
+    		<version>2.21.1</version>
+		</dependency>
+		<dependency>
+    		<groupId>org.jsoup</groupId>
+    		<artifactId>jsoup</artifactId>
+    		<version>1.17.2</version> <!-- latest stable version -->
+		</dependency>
+		<dependency>
+    <groupId>org.apache.lucene</groupId>
+    <artifactId>lucene-core</artifactId>
+    <version>8.11.2</version>
+</dependency>
 <dependency>
-    <groupId>com.google.api-client</groupId>
-    <artifactId>google-api-client</artifactId>
-    <version>2.2.0</version>
+    <groupId>org.apache.lucene</groupId>
+    <artifactId>lucene-analyzers-common</artifactId>
+    <version>8.11.2</version>
+</dependency>
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter</artifactId>
 </dependency>
 
-<!-- Google OAuth Client Library -->
+<!-- ✅ Lombok (for @RequiredArgsConstructor, @Getter, etc.) -->
 <dependency>
-    <groupId>com.google.oauth-client</groupId>
-    <artifactId>google-oauth-client-jetty</artifactId>
-    <version>1.34.1</version>
+  <groupId>org.projectlombok</groupId>
+  <artifactId>lombok</artifactId>
+  <version>1.18.32</version>
+  <scope>provided</scope>
+</dependency>
+<dependency>
+  <groupId>com.theokanning.openai-gpt3-java</groupId>
+  <artifactId>service</artifactId>
+  <version>0.18.2</version>
 </dependency>
 
-<!-- Gmail API Service Library -->
-<dependency>
-    <groupId>com.google.apis</groupId>
-    <artifactId>google-api-services-gmail</artifactId>
-    <version>v1-rev20220404-2.0.0</version>
-</dependency>
 
-<!-- JavaMail API for creating the email message structure -->
-<!-- ADD THESE LINES INSTEAD -->
-<dependency>
-    <groupId>jakarta.mail</groupId>
-    <artifactId>jakarta.mail-api</artifactId>
-    <version>2.1.2</version>
-</dependency>
-<dependency>
-    <groupId>org.eclipse.angus</groupId>
-    <artifactId>angus-mail</artifactId>
-    <version>2.0.2</version>
-</dependency>
 
-<!-- Apache Commons Codec for Base64 URL-safe encoding -->
-<dependency>
-    <groupId>commons-codec</groupId>
-    <artifactId>commons-codec</artifactId>
-    <version>1.15</version>
-</dependency>
 	</dependencies>
 
 	<build>
