@@ -34,6 +34,9 @@ public class Article {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
+    @Column(name = "insight_count")
+    private Long insightCount = 0L;
+
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
         name = "article_sources",
@@ -56,6 +59,9 @@ public class Article {
         OffsetDateTime now = OffsetDateTime.now();
         this.createdAt = now;
         this.updatedAt = now;
+        if (this.insightCount == null) {
+            this.insightCount = 0L;
+        }
     }
 
     @PreUpdate
@@ -93,4 +99,8 @@ public class Article {
 
     public List<Category> getCategories() { return categories; }
     public void setCategories(List<Category> categories) { this.categories = categories; }
+
+    public Long getInsightCount() { return insightCount; }
+    public long getInsightCountOrZero() { return insightCount != null ? insightCount : 0L; }
+    public void setInsightCount(Long insightCount) { this.insightCount = insightCount; }
 }
