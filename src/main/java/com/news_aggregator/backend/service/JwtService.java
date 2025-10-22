@@ -4,11 +4,15 @@ import com.news_aggregator.backend.model.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -27,10 +31,13 @@ public class JwtService {
     @Value("${jwt.refresh-expiration-ms:604800000}")  // 7 days
     private long refreshExpirationMs;
 
+    private Key signingKey;
+
     @PostConstruct
     public void init() {
         System.out.println("✅ JwtService initialized | access=" + accessExpirationMs +
                 " ms | refresh=" + refreshExpirationMs + " ms");
+        this.signingKey = buildSigningKey(secret);
     }
 
     // ----------------------------------------------------------------
@@ -62,7 +69,7 @@ public class JwtService {
                 .setSubject(subject)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + validityMs))
-                .signWith(SignatureAlgorithm.HS256, secret)
+                .signWith(signingKey, SignatureAlgorithm.HS256)
                 .compact();
     }
 
@@ -87,8 +94,9 @@ public class JwtService {
     }
 
     public <T> T extractClaim(String token, Function<Claims, T> resolver) {
-        final Claims claims = Jwts.parser()
-                .setSigningKey(secret)
+        final Claims claims = Jwts.parserBuilder()
+                .setSigningKey(signingKey)
+                .build()
                 .parseClaimsJws(token)
                 .getBody();
         return resolver.apply(claims);
@@ -106,5 +114,15 @@ public class JwtService {
             }
             return null;
         });
+    }
+
+    private Key buildSigningKey(String secretValue) {
+        byte[] keyBytes;
+        try {
+            keyBytes = Decoders.BASE64.decode(secretValue);
+        } catch (IllegalArgumentException ex) {
+            keyBytes = secretValue.getBytes(StandardCharsets.UTF_8);
+        }
+        return Keys.hmacShaKeyFor(keyBytes);
     }
 }

@@ -1,7 +1,6 @@
 package com.news_aggregator.backend.controller;
 
 import com.news_aggregator.backend.dto.CategoryDto;
-import com.news_aggregator.backend.model.Category;
 import com.news_aggregator.backend.repository.CategoryRepository;
 import org.springframework.web.bind.annotation.*;
 
