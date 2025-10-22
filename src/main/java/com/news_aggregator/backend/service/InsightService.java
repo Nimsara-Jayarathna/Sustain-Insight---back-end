@@ -1,10 +1,9 @@
 package com.news_aggregator.backend.service;
 
 import com.news_aggregator.backend.model.Article;
-import com.news_aggregator.backend.model.ArticleInsight;
 import com.news_aggregator.backend.model.Insight;
 import com.news_aggregator.backend.model.User;
-import com.news_aggregator.backend.repository.ArticleInsightRepository;
+import com.news_aggregator.backend.repository.ArticleRepository;
 import com.news_aggregator.backend.repository.InsightRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,7 +14,7 @@ import java.time.OffsetDateTime;
 
 /**
  * Handles creation, removal, and tracking of article insights.
- * Maintains a cached count per article in the "article_insights" table.
+ * Maintains a running count on the primary articles table for faster reads.
  */
 @Service
 @RequiredArgsConstructor
@@ -23,7 +22,7 @@ import java.time.OffsetDateTime;
 public class InsightService {
 
     private final InsightRepository insightRepository;
-    private final ArticleInsightRepository articleInsightRepository;
+    private final ArticleRepository articleRepository;
 
     /**
      * 🔹 Adds a new insight (view/action) for a given user and article.
@@ -47,8 +46,8 @@ public class InsightService {
                 .build();
         insightRepository.save(insight);
 
-        // Increment cached count (create row if missing)
-        updateCount(article.getId(), +1);
+        // Increment cached count (stores directly on articles table)
+        adjustInsightCount(article, +1);
         log.debug("Insight added: article={}, user={}", article.getId(), user.getId());
     }
 
@@ -61,7 +60,7 @@ public class InsightService {
 
         if (insightRepository.existsByUser_IdAndArticle_Id(user.getId(), article.getId())) {
             insightRepository.deleteByUser_IdAndArticle_Id(user.getId(), article.getId());
-            updateCount(article.getId(), -1);
+            adjustInsightCount(article, -1);
             log.debug("Insight removed: article={}, user={}", article.getId(), user.getId());
         }
     }
@@ -79,22 +78,28 @@ public class InsightService {
      */
     public long getCount(Article article) {
         if (article == null || article.getId() == null) return 0L;
-        return articleInsightRepository.findById(article.getId())
-                .map(ArticleInsight::getInsightCount)
-                .orElse(0L);
+        Long cached = article.getInsightCount();
+        if (cached != null) {
+            return cached;
+        }
+
+        Long persisted = articleRepository.findInsightCountById(article.getId());
+        return persisted != null ? persisted : 0L;
     }
 
     /**
-     * 🔹 Adjusts cached count in "article_insights" (creates row if missing).
+     * 🔹 Adjusts cached count in the articles table.
      * Ensures count never drops below zero.
      */
-    private void updateCount(Long articleId, int delta) {
-        ArticleInsight ai = articleInsightRepository.findById(articleId)
-                .orElseGet(() -> new ArticleInsight(articleId, 0L));
-
-        long newCount = ai.getInsightCount() + delta;
-        ai.setInsightCount(Math.max(0, newCount));
-
-        articleInsightRepository.save(ai);
+    private void adjustInsightCount(Article article, int delta) {
+        if (delta > 0) {
+            articleRepository.incrementInsightCount(article.getId());
+            long newCount = article.getInsightCountOrZero() + delta;
+            article.setInsightCount(newCount);
+        } else if (delta < 0) {
+            articleRepository.decrementInsightCount(article.getId());
+            long current = article.getInsightCountOrZero();
+            article.setInsightCount(Math.max(0, current + delta));
+        }
     }
 }
