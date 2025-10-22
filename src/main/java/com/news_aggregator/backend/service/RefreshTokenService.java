@@ -116,9 +116,22 @@ public class RefreshTokenService {
 
     @Transactional
     protected void deleteTokenAndDeactivateSession(RefreshToken refreshToken) {
-        if (refreshToken.getSession() != null) {
-            log.trace("Deactivating session {} while deleting refresh token {}", refreshToken.getSession().getId(), refreshToken.getId());
-            userSessionRepository.deactivateById(refreshToken.getSession().getId(), Instant.now());
+        UserSession session = refreshToken.getSession();
+        if (session != null) {
+            UUID sessionId = session.getId();
+            Instant now = Instant.now();
+            log.trace("Deactivating session {} while deleting refresh token {}", sessionId, refreshToken.getId());
+
+            session.setActive(false);
+            session.setLastActiveAt(now);
+            if (session.getExpiresAt() == null) {
+                session.setExpiresAt(now);
+            }
+            session.setRefreshToken(null);
+            userSessionRepository.save(session);
+
+            refreshToken.setSession(null);
+            log.trace("Session {} marked inactive and detached from refresh token {}", sessionId, refreshToken.getId());
         }
         log.trace("Deleting refresh token {}", refreshToken.getId());
         refreshTokenRepository.delete(refreshToken);
