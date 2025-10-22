@@ -14,6 +14,8 @@ import jakarta.mail.Session;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 import org.apache.commons.codec.binary.Base64;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -27,6 +29,7 @@ public class EmailService {
 
     private static final String APPLICATION_NAME = "Sustain Insight";
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
+    private static final Logger log = LoggerFactory.getLogger(EmailService.class);
 
     @Value("${google.client.id}")
     private String clientId;
@@ -82,10 +85,10 @@ public class EmailService {
             Message message = new Message();
             message.setRaw(encodedEmail);
             service.users().messages().send("me", message).execute();
-            System.out.println("✅ Email sent successfully to: " + to + " | Subject: " + subject);
+            log.info("Email sent successfully to {} | Subject: {}", to, subject);
         } catch (Exception e) {
-            System.err.println("⚠️ Failed to send email via Gmail API: " + e.getMessage());
-            e.printStackTrace();
+            log.error("Failed to send email via Gmail API to {} | Subject: {}", to, subject, e);
+            throw new IllegalStateException("Failed to send email via Gmail API", e);
         }
     }
 
