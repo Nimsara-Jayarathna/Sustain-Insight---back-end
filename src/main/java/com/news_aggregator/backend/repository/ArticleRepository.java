@@ -4,7 +4,9 @@ import com.news_aggregator.backend.model.Article;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -31,11 +33,35 @@ public interface ArticleRepository extends JpaRepository<Article, Long>, JpaSpec
     @Query(value = """
         SELECT a.*
         FROM articles a
-        LEFT JOIN article_insights ai ON a.id = ai.article_id
-        ORDER BY COALESCE(ai.insight_count, 0) DESC, a.published_at DESC
+        ORDER BY COALESCE(a.insight_count, 0) DESC, a.published_at DESC
         LIMIT :limit OFFSET :offset
     """, nativeQuery = true)
     List<Article> findAllOrderByPopularity(int limit, int offset);
+
+    // ============================================================
+    // 🔹 INSIGHT COUNT UPDATES
+    // ============================================================
+
+    @Modifying
+    @Transactional
+    @Query(value = """
+        UPDATE articles
+        SET insight_count = COALESCE(insight_count, 0) + 1
+        WHERE id = :articleId
+    """, nativeQuery = true)
+    void incrementInsightCount(Long articleId);
+
+    @Modifying
+    @Transactional
+    @Query(value = """
+        UPDATE articles
+        SET insight_count = GREATEST(COALESCE(insight_count, 0) - 1, 0)
+        WHERE id = :articleId
+    """, nativeQuery = true)
+    void decrementInsightCount(Long articleId);
+
+    @Query("SELECT a.insightCount FROM Article a WHERE a.id = :articleId")
+    Long findInsightCountById(Long articleId);
 
     // ============================================================
     // 🔹 DUPLICATE VALIDATION
