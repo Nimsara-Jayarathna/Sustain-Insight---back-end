@@ -16,6 +16,7 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -58,17 +59,36 @@ public class GuardianFetcher implements RawNewsSourceFetcher {
                 if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) break;
 
                 Map<String, Object> resp = response.getBody();
-                Map<String, Object> responseData = (Map<String, Object>) resp.get("response");
-                if (responseData == null || !responseData.containsKey("results")) break;
+                Object responseNode = resp.get("response");
+                if (!(responseNode instanceof Map<?, ?> responseData)) break;
 
-                @SuppressWarnings("unchecked")
-                List<Map<String, Object>> articles =
-                        (List<Map<String, Object>>) responseData.get("results");
+                Object resultsNode = responseData.get("results");
+                if (!(resultsNode instanceof List<?> rawResults)) break;
 
-                for (Map<String, Object> item : articles) {
+                for (Object rawItem : rawResults) {
+                    if (!(rawItem instanceof Map<?, ?> rawMap)) {
+                        continue;
+                    }
+
+                    Map<String, Object> item = rawMap.entrySet().stream()
+                            .filter(entry -> entry.getKey() instanceof String)
+                            .collect(Collectors.toMap(
+                                    entry -> (String) entry.getKey(),
+                                    Map.Entry::getValue
+                            ));
+
                     try {
                         String webUrl = (String) item.get("webUrl");
-                        Map<String, Object> fields = (Map<String, Object>) item.get("fields");
+                        Object fieldsNode = item.get("fields");
+                        Map<String, Object> fields = null;
+                        if (fieldsNode instanceof Map<?, ?> rawFields) {
+                            fields = rawFields.entrySet().stream()
+                                    .filter(entry -> entry.getKey() instanceof String)
+                                    .collect(Collectors.toMap(
+                                            entry -> (String) entry.getKey(),
+                                            Map.Entry::getValue
+                                    ));
+                        }
 
                         String title = fields != null ? (String) fields.get("headline") : null;
                         String description = fields != null ? (String) fields.get("trailText") : null;

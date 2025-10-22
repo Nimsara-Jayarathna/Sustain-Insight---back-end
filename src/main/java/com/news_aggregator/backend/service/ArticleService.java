@@ -65,10 +65,12 @@ public class ArticleService {
         User user = userDetails != null ? getUser(userDetails) : null;
 
         if ("popular".equalsIgnoreCase(sortParam)) {
-            Specification<Article> spec = Specification.where(ArticleSpecification.hasKeyword(keyword))
-                    .and(ArticleSpecification.hasCategories(categoryIds))
-                    .and(ArticleSpecification.hasSources(sourceIds))
-                    .and(ArticleSpecification.hasDate(date));
+            Specification<Article> spec = Specification.allOf(
+                    ArticleSpecification.hasKeyword(keyword),
+                    ArticleSpecification.hasCategories(categoryIds),
+                    ArticleSpecification.hasSources(sourceIds),
+                    ArticleSpecification.hasDate(date)
+            );
 
             List<Article> filtered = articleRepository.findAll(spec);
 
@@ -106,10 +108,12 @@ public class ArticleService {
         };
 
         Pageable pageable = PageRequest.of(page > 0 ? page - 1 : 0, size, sort);
-        Specification<Article> spec = Specification.where(ArticleSpecification.hasKeyword(keyword))
-                .and(ArticleSpecification.hasCategories(categoryIds))
-                .and(ArticleSpecification.hasSources(sourceIds))
-                .and(ArticleSpecification.hasDate(date));
+        Specification<Article> spec = Specification.allOf(
+                ArticleSpecification.hasKeyword(keyword),
+                ArticleSpecification.hasCategories(categoryIds),
+                ArticleSpecification.hasSources(sourceIds),
+                ArticleSpecification.hasDate(date)
+        );
 
         Page<Article> articlePage = articleRepository.findAll(spec, pageable);
 
@@ -136,9 +140,11 @@ public class ArticleService {
             return Collections.emptyList();
         }
 
-        Specification<Article> spec = Specification.where(ArticleSpecification.hasCategories(preferredCategoryIds))
-                .and(ArticleSpecification.hasSources(preferredSourceIds))
-                .and(ArticleSpecification.publishedWithinLastHours(feedHoursWindow));
+        Specification<Article> spec = Specification.allOf(
+                ArticleSpecification.hasCategories(preferredCategoryIds),
+                ArticleSpecification.hasSources(preferredSourceIds),
+                ArticleSpecification.publishedWithinLastHours(feedHoursWindow)
+        );
 
         List<Article> articles = articleRepository.findAll(spec, Sort.by(Sort.Direction.DESC, "publishedAt"));
 
@@ -157,9 +163,11 @@ public class ArticleService {
         }
 
         Pageable pageable = PageRequest.of(page > 0 ? page - 1 : 0, size, Sort.by(Sort.Direction.DESC, "publishedAt"));
-        Specification<Article> spec = Specification.where(ArticleSpecification.hasCategories(preferredCategoryIds))
-                .and(ArticleSpecification.hasSources(preferredSourceIds))
-                .and(ArticleSpecification.publishedWithinLastHours(feedHoursWindow));
+        Specification<Article> spec = Specification.allOf(
+                ArticleSpecification.hasCategories(preferredCategoryIds),
+                ArticleSpecification.hasSources(preferredSourceIds),
+                ArticleSpecification.publishedWithinLastHours(feedHoursWindow)
+        );
 
         Page<Article> articlePage = articleRepository.findAll(spec, pageable);
 

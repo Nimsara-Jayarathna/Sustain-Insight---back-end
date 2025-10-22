@@ -1,7 +1,6 @@
 package com.news_aggregator.backend.controller;
 
 import com.news_aggregator.backend.dto.SourceDto;
-import com.news_aggregator.backend.model.Source;
 import com.news_aggregator.backend.repository.SourceRepository;
 import org.springframework.web.bind.annotation.*;
 

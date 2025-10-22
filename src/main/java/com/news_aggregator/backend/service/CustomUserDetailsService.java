@@ -1,6 +1,5 @@
 package com.news_aggregator.backend.service;
 
-import com.news_aggregator.backend.model.User;
 import com.news_aggregator.backend.repository.UserRepository;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
