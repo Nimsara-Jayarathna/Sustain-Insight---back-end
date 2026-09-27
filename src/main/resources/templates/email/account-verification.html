@@ -1,0 +1,10 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Verify your account</title></head>
+<body style="margin:0;background:#f2f4f7;font-family:Arial,sans-serif;color:#2d2d2d;">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="padding:30px 12px;"><tr><td align="center">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background:#fff;border-radius:14px;overflow:hidden;">
+<tr><td align="center" style="padding:28px 20px;background:#10b981;color:#fff;"><h1 style="margin:0;font-size:22px;">Welcome! Please verify your email</h1></td></tr>
+<tr><td style="padding:32px;line-height:1.7;font-size:15px;"><p>Hello <strong th:text="${firstName}">there</strong>,</p><p>Thank you for signing up for <strong th:text="${brandName}">Sustain Insight</strong>. Verify your email address to complete registration. This verification link is valid for 24 hours.</p><p style="text-align:center;margin:30px 0;"><a th:href="${verificationLink}" href="#" style="display:inline-block;background:#0ea5e9;color:#fff;text-decoration:none;font-weight:600;padding:12px 28px;border-radius:28px;">Verify My Email</a></p><p>If you did not create this account, you can ignore this email.</p></td></tr>
+<tr><td align="center" style="background:#f9fafb;padding:20px;font-size:12px;color:#7a7a7a;">&copy; <span th:text="${currentYear}">2026</span> <span th:text="${brandName}">Sustain Insight</span> &nbsp;|&nbsp; <a th:href="${frontendUrl}" href="#" style="color:#0ea5e9;">Visit Sustain Insight</a></td></tr>
+</table></td></tr></table></body></html>

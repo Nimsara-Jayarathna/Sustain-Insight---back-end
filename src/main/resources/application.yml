@@ -3,12 +3,9 @@ spring:
     name: backend
 
   datasource:
-    url: jdbc:postgresql://${PGHOST}:${PGPORT}/${PGDATABASE}?sslmode=require
+    url: jdbc:postgresql://${PGHOST}:${PGPORT}/${PGDATABASE}?sslmode=${PGSSLMODE:require}
     username: ${PGUSER}
     password: ${PGPASSWORD}
-
-  mail:
-    from: ${MAIL_FROM}   
 
   jpa:
     hibernate:
@@ -85,17 +82,14 @@ clustering:
 app:
   frontend-url: ${FRONTEND_URL}
   brand:
-    name: ${BRAND_NAME}
+    name: ${BRAND_NAME:Sustain Insight}
+  email:
+    provider: ${EMAIL_PROVIDER:brevo}
+    sender-email: ${BREVO_SENDER_EMAIL:}
+    sender-name: ${BREVO_SENDER_NAME:Sustain Insight}
+    brevo:
+      api-key: ${BREVO_API_KEY:}
 
-google:
-  client:
-    id=: ${GOOGLE_CLIENT_ID}
-    secret: ${GOOGLE_CLIENT_SECRET}
-  refresh:
-    token: ${GOOGLE_REFRESH_TOKEN}
-  sender:
-    email: ${GOOGLE_SENDER_EMAIL}
-  
 jwt:
   secret: ${JWT_KEY}
   access-expiration-ms: ${JWT_ACCESS_EXPIRATION}       

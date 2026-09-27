@@ -43,3 +43,6 @@ Procfile
 *.zip
 deploy-eb.sh
 a.sh
+# Keep committed environment templates even though real .env.* files are ignored.
+!.env.example
+!.env.staging.example

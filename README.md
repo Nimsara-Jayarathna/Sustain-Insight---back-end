@@ -56,7 +56,7 @@ Entities are mapped with JPA and rely on PostgreSQL features (UUID columns, upda
   - Email-change OTPs automatically expire and are purged.
 
 - **Communication**
-  - Gmail API integration for outbound emails (password resets, verification, change notifications) using OAuth credentials.
+  - Provider-isolated Brevo transactional email for password resets, verification, and email-change notifications.
   - Branded email templates referencing environment-driven settings.
 
 ---
@@ -70,7 +70,7 @@ Entities are mapped with JPA and rely on PostgreSQL features (UUID columns, upda
 | Database          | PostgreSQL (local or managed: Azure Postgres, AWS RDS, Neon, etc.)         |
 | Build & Run       | Maven + Spring Boot plugin                                                  |
 | Authentication    | Spring Security with JWT                                                    |
-| Email             | Spring Mail                                                                 |
+| Email             | Brevo transactional email + Thymeleaf templates                            |
 
 ---
 
@@ -78,8 +78,9 @@ Entities are mapped with JPA and rely on PostgreSQL features (UUID columns, upda
 
 Configuration is pulled from environment variables. To simplify onboarding:
 
-1. **Provide a template** – create an `env.example` file containing the keys below with placeholder values. Commit this template so teammates can copy it.
-2. **Create a working file** – copy the template to `.env` (or `.env.local`) and populate it with actual secrets. Never commit this file.
+1. **Use the committed template** – `.env.example` contains the local configuration contract and `.env.staging.example` contains the VPS staging contract.
+2. **Create a working file** – copy `.env.example` to `.env` and populate it with actual secrets. Never commit the real `.env`.
+3. **For GitHub staging** – paste the completed `.env.staging.example` content into the repository secret `APP_ENV_FILE`.
 
 ```bash
 # --- DATABASE ---
@@ -117,13 +118,12 @@ LATEST_DEFAULT_LIMIT="5"
 LATEST_MAX_LIMIT="6"
 
 # --- EMAIL / BRANDING ---
-FRONTEND_URL="http://localhost:3000"
+FRONTEND_URL="http://localhost:5173"
 BRAND_NAME="Sustain Insight"
-GOOGLE_CLIENT_ID=""
-GOOGLE_CLIENT_SECRET=""
-GOOGLE_REFRESH_TOKEN=""
-GOOGLE_SENDER_EMAIL=""
-MAIL_FROM=""
+EMAIL_PROVIDER="brevo"
+BREVO_API_KEY=""
+BREVO_SENDER_EMAIL="no-reply@your-domain.com"
+BREVO_SENDER_NAME="Sustain Insight"
 
 # --- PASSWORD ENCODER ---
 SECURITY_PASSWORD_ARGON2_SALT_LENGTH="16"
@@ -134,7 +134,7 @@ SECURITY_PASSWORD_ARGON2_ITERATIONS="3"
 SECURITY_COOKIES_SECURE="false"
 ```
 
-**Recommendation:** Store a copy of `env.example` in the repository; developers can run `cp env.example .env` and edit their own copy. This avoids outdated instructions in the README and keeps secrets local.
+Run `cp .env.example .env` for local development. For the email architecture and provider-replacement rules, see [`docs/EMAIL_SERVICE.md`](docs/EMAIL_SERVICE.md).
 
 ---
 
@@ -200,6 +200,7 @@ Sustain-Insight---back-end
 │  │  │  ├─ config/         # Security configuration, scheduling, Jackson setup
 │  │  │  ├─ controller/     # REST controllers (Auth, Articles, Insights, etc.)
 │  │  │  ├─ dto/            # DTO classes sent to the frontend
+│  │  │  ├─ email/          # Provider-isolated email config, adapter, templates, model
 │  │  │  ├─ exception/      # Custom exception types
 │  │  │  ├─ model/          # JPA entities (User, Article, RefreshToken, UserSession,…)
 │  │  │  ├─ payload/        # Request/response payload objects
@@ -207,7 +208,7 @@ Sustain-Insight---back-end
 │  │  │  └─ service/        # Business logic, orchestration, schedulers
 │  │  └─ resources
 │  │     ├─ application.yml # Spring configuration reading from environment variables
-│  │     └─ templates/      # Email templates (if present)
+│  │     └─ templates/email # Thymeleaf transactional email templates
 │  └─ test                  # Unit / integration tests
 ├─ pom.xml                  # Maven project descriptor
 ├─ mvnw / mvnw.cmd          # Maven wrapper scripts

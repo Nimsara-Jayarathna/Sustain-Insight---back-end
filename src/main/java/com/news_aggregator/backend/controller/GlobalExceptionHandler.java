@@ -1,5 +1,6 @@
 package com.news_aggregator.backend.controller;
 
+import com.news_aggregator.backend.email.exception.EmailDeliveryException;
 import com.news_aggregator.backend.payload.ErrorResponse;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -67,6 +68,15 @@ public class GlobalExceptionHandler {
 
         ErrorResponse error = new ErrorResponse("INVALID_STATE", message);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+
+    @ExceptionHandler(EmailDeliveryException.class)
+    public ResponseEntity<ErrorResponse> handleEmailDeliveryException(EmailDeliveryException ex) {
+        ErrorResponse error = new ErrorResponse(
+                "EMAIL_SERVICE_UNAVAILABLE",
+                "Email service is currently unavailable. Please try again later.");
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(error);
     }
 
     // 🔹 Fallback for all other exceptions
