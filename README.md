@@ -265,3 +265,7 @@ Maintained by the Sustain Insight team.
 Have questions, ideas, or feedback? Contact `contact.sustain-insight@blipzo.xyz`.
 
 © 2025 Sustain Insight. All rights reserved.
+
+## Database schema management
+
+Database schema changes are managed by Flyway. On startup, Flyway applies pending migrations from `src/main/resources/db/migration`, then Hibernate validates the resulting schema with `ddl-auto=validate`. Fresh PostgreSQL databases therefore require no manual table creation. See `docs/DATABASE_MIGRATIONS.md` for the migration contract, legacy-baseline procedure, and safety rules.

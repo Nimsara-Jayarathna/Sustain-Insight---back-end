@@ -22,6 +22,21 @@ jobs:
     name: Validate
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: sustain_insight_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d sustain_insight_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -33,8 +48,75 @@ jobs:
           java-version: "21"
           cache: maven
 
-      - name: Compile and package
+      - name: Compile, test, and package
         run: ./mvnw -B clean verify
+
+      - name: Verify Flyway migrations and application startup
+        env:
+          PORT: "5000"
+          BRAND_NAME: Sustain Insight
+          FRONTEND_URL: http://localhost:5173
+          CORS_ALLOWED_ORIGINS: http://localhost:5173
+          PGHOST: 127.0.0.1
+          PGPORT: "5432"
+          PGDATABASE: sustain_insight_ci
+          PGUSER: postgres
+          PGPASSWORD: postgres
+          PGSSLMODE: disable
+          FLYWAY_ENABLED: "true"
+          FLYWAY_BASELINE_ON_MIGRATE: "false"
+          FLYWAY_BASELINE_VERSION: "1"
+          FLYWAY_VALIDATE_ON_MIGRATE: "true"
+          FLYWAY_CLEAN_DISABLED: "true"
+          JWT_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+          JWT_ACCESS_EXPIRATION: "900000"
+          JWT_REFRESH_EXPIRATION: "604800000"
+          EMAIL_PROVIDER: brevo
+          BREVO_API_KEY: ci-placeholder
+          BREVO_SENDER_EMAIL: no-reply@example.test
+          BREVO_SENDER_NAME: Sustain Insight CI
+          NEWS_API_KEY: ci-placeholder
+          GUARDIAN_API_KEY: ci-placeholder
+          OPEN_AI_KEY: ci-placeholder
+          GEMINI_API_KEY: ci-placeholder
+          FEED_HOURS_WINDOW: "24"
+          PAGINATION_DEFAULT_SIZE: "20"
+          PAGINATION_MAX_SIZE: "100"
+          LATEST_DEFAULT_LIMIT: "10"
+          LATEST_MAX_LIMIT: "50"
+          NEWS_FETCHING_ENABLED: "false"
+          NEWS_FETCHING_DELAY: "3600000"
+          NEWS_FETCHING_SCHEDULED_LIMIT: "50"
+          SYNTHESIS_TRIGGER_THRESHOLD: "3"
+          CLUSTERING_TFIDF_THRESHOLD: "0.3"
+        run: |
+          set -euo pipefail
+          JAR=$(find target -maxdepth 1 -type f -name '*.jar' ! -name '*.original' | head -n 1)
+          if [ -z "$JAR" ]; then
+            echo "Packaged application JAR not found" >&2
+            exit 1
+          fi
+
+          java -jar "$JAR" > /tmp/sustain-insight-ci.log 2>&1 &
+          APP_PID=$!
+          trap 'kill "$APP_PID" 2>/dev/null || true' EXIT
+
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:5000/actuator/health | grep -q '"status":"UP"'; then
+              echo "Application started with Flyway migrations and Hibernate validation successfully."
+              exit 0
+            fi
+            if ! kill -0 "$APP_PID" 2>/dev/null; then
+              echo "Application exited before becoming healthy." >&2
+              cat /tmp/sustain-insight-ci.log >&2
+              exit 1
+            fi
+            sleep 2
+          done
+
+          echo "Application did not become healthy in time." >&2
+          cat /tmp/sustain-insight-ci.log >&2
+          exit 1
 
   build:
     name: Build Image
@@ -181,5 +263,23 @@ jobs:
           NPM_NET_NAME="$NPM_NET_NAME" \
           $DC -p "$COMPOSE_PROJECT_NAME" -f docker-compose.staging.yml up -d --remove-orphans
 
-          docker image prune -f
+          echo "Waiting for backend health check..."
+          for attempt in $(seq 1 36); do
+            STATUS=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$CONTAINER_NAME" 2>/dev/null || true)
+            if [ "$STATUS" = "healthy" ]; then
+              echo "Backend is healthy."
+              docker image prune -f
+              exit 0
+            fi
+            if [ "$STATUS" = "unhealthy" ]; then
+              echo "Backend became unhealthy. Recent logs:" >&2
+              docker logs --tail 200 "$CONTAINER_NAME" >&2 || true
+              exit 1
+            fi
+            sleep 5
+          done
+
+          echo "Backend did not become healthy in time. Recent logs:" >&2
+          docker logs --tail 200 "$CONTAINER_NAME" >&2 || true
+          exit 1
           EOF_REMOTE

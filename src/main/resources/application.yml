@@ -8,14 +8,20 @@ spring:
     password: ${PGPASSWORD}
 
   jpa:
+    open-in-view: false
     hibernate:
-      ddl-auto: none
-      open-in-view: false
+      ddl-auto: validate
     properties:
       hibernate.jdbc.time_zone: UTC
 
   flyway:
-    enabled: false
+    enabled: ${FLYWAY_ENABLED:true}
+    locations: classpath:db/migration
+    baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:false}
+    baseline-version: ${FLYWAY_BASELINE_VERSION:1}
+    validate-on-migrate: ${FLYWAY_VALIDATE_ON_MIGRATE:true}
+    clean-disabled: ${FLYWAY_CLEAN_DISABLED:true}
+    out-of-order: false
 
 management:
   endpoints:

@@ -22,7 +22,7 @@ public class NewsScheduler {
     private final ArticleOrchestrationService articleOrchestrationService;
     private final RawArticleRepository rawArticleRepository;
     private final SynthesisState synthesisState;
-    private final int fetchingEnabled;
+    private final boolean fetchingEnabled;
     private final int scheduledLimit;
     private final int synthesisThreshold;
 
@@ -33,7 +33,7 @@ public class NewsScheduler {
                          @Lazy ArticleOrchestrationService articleOrchestrationService,
                          RawArticleRepository rawArticleRepository,
                          SynthesisState synthesisState,
-                         @Value("${fetching.enabled:1}") int fetchingEnabled,
+                         @Value("${fetching.enabled:true}") boolean fetchingEnabled,
                          @Value("${fetching.scheduled.limit:10}") int scheduledLimit,
                          @Value("${synthesis.trigger.threshold:100}") int synthesisThreshold) {
         this.rawNewsFetcherService = rawNewsFetcherService;
@@ -49,7 +49,7 @@ public class NewsScheduler {
     public void scheduledLogic() {
         String time = LocalDateTime.now().format(TIME_FMT);
 
-        if (fetchingEnabled == 0) {
+        if (!fetchingEnabled) {
             return;
         }
 
