@@ -101,7 +101,7 @@ jobs:
           APP_PID=$!
           trap 'kill "$APP_PID" 2>/dev/null || true' EXIT
 
-          for attempt in $(seq 1 60); do
+          for attempt in $(seq 1 90); do
             if curl --fail --silent http://127.0.0.1:5000/actuator/health | grep -q '"status":"UP"'; then
               echo "Application started with Flyway migrations and Hibernate validation successfully."
               exit 0
@@ -263,23 +263,33 @@ jobs:
           NPM_NET_NAME="$NPM_NET_NAME" \
           $DC -p "$COMPOSE_PROJECT_NAME" -f docker-compose.staging.yml up -d --remove-orphans
 
-          echo "Waiting for backend health check..."
-          for attempt in $(seq 1 36); do
+          echo "Waiting for backend health check (up to 5 minutes)..."
+          for attempt in $(seq 1 60); do
             STATUS=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$CONTAINER_NAME" 2>/dev/null || true)
+            RUNNING=$(docker inspect --format='{{.State.Running}}' "$CONTAINER_NAME" 2>/dev/null || echo false)
+            EXIT_CODE=$(docker inspect --format='{{.State.ExitCode}}' "$CONTAINER_NAME" 2>/dev/null || echo unknown)
+
             if [ "$STATUS" = "healthy" ]; then
               echo "Backend is healthy."
               docker image prune -f
               exit 0
             fi
-            if [ "$STATUS" = "unhealthy" ]; then
-              echo "Backend became unhealthy. Recent logs:" >&2
+
+            if [ "$RUNNING" != "true" ]; then
+              echo "Backend container exited before becoming healthy (exit=$EXIT_CODE). Recent logs:" >&2
               docker logs --tail 200 "$CONTAINER_NAME" >&2 || true
               exit 1
+            fi
+
+            # Do not fail on an early 'unhealthy' result. Spring Boot can still be
+            # initializing Hibernate/security on smaller VPS instances.
+            if [ $((attempt % 6)) -eq 0 ]; then
+              echo "Backend health status after $((attempt * 5))s: $STATUS"
             fi
             sleep 5
           done
 
-          echo "Backend did not become healthy in time. Recent logs:" >&2
+          echo "Backend did not become healthy within 5 minutes. Recent logs:" >&2
           docker logs --tail 200 "$CONTAINER_NAME" >&2 || true
           exit 1
           EOF_REMOTE

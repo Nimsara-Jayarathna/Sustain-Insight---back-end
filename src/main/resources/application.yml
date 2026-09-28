@@ -77,6 +77,7 @@ articles:
 fetching:
   enabled: ${NEWS_FETCHING_ENABLED}
   delay: ${NEWS_FETCHING_DELAY}
+  initial-delay: ${NEWS_FETCHING_INITIAL_DELAY:60000}
   scheduled:
     limit: ${NEWS_FETCHING_SCHEDULED_LIMIT}
 

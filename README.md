@@ -282,3 +282,9 @@ The staging-ready backend uses Flyway-managed PostgreSQL migrations, Hibernate s
 ## Runtime hardening notes
 
 See `docs/PERSISTENCE_RUNTIME_HARDENING.md` for the persistence-boundary and lazy-loading hardening applied for production/staging operation with `spring.jpa.open-in-view=false`.
+
+## Reference data and startup hardening
+
+Flyway V3 seeds the controlled sustainability category taxonomy and provider-level fallback sources without deleting existing rows. Runtime publisher sources are discovered from raw news data and inserted idempotently before synthesis; AI-returned reference IDs are validated before article persistence. See `docs/REFERENCE_DATA.md`.
+
+Staging health checks allow slow Spring Boot startup and the scheduled news pipeline has a configurable initial delay. See `docs/DEPLOYMENT_HEALTH.md`.

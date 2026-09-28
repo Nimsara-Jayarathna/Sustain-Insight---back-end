@@ -85,10 +85,14 @@ public class ArticleOrchestrationService {
                 return;
             }
 
-            // Step 4: Synthesize articles with AI
+            // Step 4: Ensure reference data is ready, then synthesize articles with AI.
+            // Categories are Flyway-seeded; sources are discovered from the raw batch.
+            sourceService.synchronizeFromRawArticles(rawArticles);
             List<Map<String, Object>> availableCategories = categoryService.getAllAsMap();
             List<Map<String, Object>> availableSources = sourceService.getAllAsMap();
-            String engineeredPromptJson = promptBuilderService.buildEngineeredPrompt(clusters, availableCategories, availableSources);
+            Long defaultCategoryId = categoryService.getDefaultCategory().getId();
+            String engineeredPromptJson = promptBuilderService.buildEngineeredPrompt(
+                    clusters, availableCategories, availableSources, defaultCategoryId);
             String geminiResponse = synthesisService.generateUnifiedArticle(engineeredPromptJson);
 
             // Step 5: Save the synthesized articles

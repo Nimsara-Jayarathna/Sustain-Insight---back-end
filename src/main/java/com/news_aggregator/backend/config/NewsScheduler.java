@@ -45,7 +45,7 @@ public class NewsScheduler {
         this.synthesisThreshold = synthesisThreshold;
     }
 
-    @Scheduled(fixedDelayString = "${fetching.delay}", initialDelay = 10000)
+    @Scheduled(fixedDelayString = "${fetching.delay}", initialDelayString = "${fetching.initial-delay:60000}")
     public void scheduledLogic() {
         String time = LocalDateTime.now().format(TIME_FMT);
 

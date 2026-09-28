@@ -30,6 +30,9 @@ public class ArticleService {
     private final InsightService insightService;
     private final CategoryRepository categoryRepository;
     private final SourceRepository sourceRepository;
+    private final RawArticleRepository rawArticleRepository;
+    private final CategoryService categoryService;
+    private final SourceService sourceService;
 
     @Value("${feed.hoursWindow}")
     private int feedHoursWindow;
@@ -259,21 +262,83 @@ public class ArticleService {
                 article.setPublishedAt(OffsetDateTime.now());
             }
 
-            @SuppressWarnings("unchecked")
-            List<Integer> categoryIds = (List<Integer>) articleMap.get("category_ids");
-            if (categoryIds != null) {
-                List<Category> categories = categoryRepository.findAllById(categoryIds.stream().map(Long::valueOf).collect(Collectors.toList()));
-                article.setCategories(new ArrayList<>(categories));
+            List<Long> categoryIds = extractLongIds(articleMap.get("category_ids"));
+            List<Category> categories = categoryIds.isEmpty()
+                    ? List.of()
+                    : categoryRepository.findAllById(categoryIds);
+            if (categories.isEmpty()) {
+                categories = List.of(categoryService.getDefaultCategory());
             }
+            article.setCategories(new ArrayList<>(categories));
 
-            @SuppressWarnings("unchecked")
-            List<Integer> sourceIds = (List<Integer>) articleMap.get("source_ids");
-            if (sourceIds != null) {
-                List<Source> sources = sourceRepository.findAllById(sourceIds.stream().map(Long::valueOf).collect(Collectors.toList()));
-                article.setSources(new ArrayList<>(sources));
+            List<Long> sourceIds = extractLongIds(articleMap.get("source_ids"));
+            List<Source> sources = sourceIds.isEmpty()
+                    ? List.of()
+                    : sourceRepository.findAllById(sourceIds);
+
+            if (sources.isEmpty()) {
+                Source fallbackSource = resolveFallbackSource(articleMap);
+                if (fallbackSource != null) {
+                    sources = List.of(fallbackSource);
+                }
             }
+            article.setSources(new ArrayList<>(sources));
 
             articleRepository.save(article);
         }
     }
+    private List<Long> extractLongIds(Object rawIds) {
+        if (!(rawIds instanceof List<?> ids)) {
+            return List.of();
+        }
+
+        return ids.stream()
+                .map(value -> {
+                    if (value instanceof Number number) {
+                        return number.longValue();
+                    }
+                    try {
+                        return value == null ? null : Long.valueOf(value.toString());
+                    } catch (NumberFormatException ignored) {
+                        return null;
+                    }
+                })
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+    }
+
+    private Source resolveFallbackSource(Map<String, Object> articleMap) {
+        Long rawArticleId = null;
+        Object idValue = articleMap.get("id");
+        if (idValue instanceof Number number) {
+            rawArticleId = number.longValue();
+        } else if (idValue != null) {
+            try {
+                rawArticleId = Long.valueOf(idValue.toString());
+            } catch (NumberFormatException ignored) {
+                // Fall through to provider-level fallback below.
+            }
+        }
+
+        if (rawArticleId != null) {
+            var rawArticle = rawArticleRepository.findById(rawArticleId).orElse(null);
+            if (rawArticle != null) {
+                String candidate = rawArticle.getSourceName();
+                if (candidate == null || candidate.isBlank()) {
+                    candidate = rawArticle.getApiSource();
+                }
+                if (candidate != null && !candidate.isBlank()) {
+                    return sourceService.getOrCreate(candidate);
+                }
+            }
+        }
+
+        Object provider = articleMap.get("api_source");
+        if (provider != null && !provider.toString().isBlank()) {
+            return sourceService.getOrCreate(provider.toString());
+        }
+        return null;
+    }
+
 }

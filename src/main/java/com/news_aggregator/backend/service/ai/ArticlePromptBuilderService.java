@@ -17,7 +17,8 @@ public class ArticlePromptBuilderService {
     public String buildEngineeredPrompt(
             List<Map<String, Object>> clusters,
             List<Map<String, Object>> availableCategories,
-            List<Map<String, Object>> availableSources
+            List<Map<String, Object>> availableSources,
+            Long defaultCategoryId
     ) {
         try {
             String prompt = "You are a sophisticated AI News Analyst. Your task is to process a list of article clusters. "
@@ -28,8 +29,10 @@ public class ArticlePromptBuilderService {
                     + "2.  Summarize the content of all other articles in the `articles` array.\n"
                     + "3.  Merge the summarized content into the `content` of the primary article. Also, update the `title` and `summary` of the primary article to reflect the new content.\n"
                     + "4.  Keep the `id`, `api_source`, `url`, `image_url`, and `published_at` of the original primary article.\n"
-                    + "5.  Analyze the new content and assign relevant category IDs from the `available_categories`. If no specific category matches, default to `[8]` (General Sustainability).\n"
-                    + "6.  Assign relevant source IDs from the `available_sources`. If no source is found, you can assign a random one.\n"
+                    + "5.  Analyze the new content and assign only category IDs present in `available_categories`. "
+                    + "If no specific category matches, use the provided General Sustainability default category ID: [" + defaultCategoryId + "].\n"
+                    + "6.  Assign only source IDs present in `available_sources` that match the publishers represented in the cluster. "
+                    + "Never invent or randomly select a source ID.\n"
                     + "Finally, you must call the `article_list_generator` tool with the list of processed primary articles.\n\n"
                     + "Available Categories:\n" + mapper.writeValueAsString(availableCategories) + "\n"
                     + "Available Sources:\n" + mapper.writeValueAsString(availableSources) + "\n"
