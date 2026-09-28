@@ -13,10 +13,13 @@ import java.util.Optional;
 public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long> {
     Optional<RefreshToken> findByToken(String token);
 
-    @Query("SELECT DISTINCT rt FROM RefreshToken rt
+    @Query("""
+            SELECT DISTINCT rt
+            FROM RefreshToken rt
             JOIN FETCH rt.user
             LEFT JOIN FETCH rt.session
-            WHERE rt.token = :token")
+            WHERE rt.token = :token
+            """)
     Optional<RefreshToken> findDetailedByToken(@Param("token") String token);
 
     List<RefreshToken> findAllByExpiryDateBefore(Instant instant);
