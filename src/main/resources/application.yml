@@ -13,6 +13,7 @@ spring:
       ddl-auto: validate
     properties:
       hibernate.jdbc.time_zone: UTC
+      hibernate.default_batch_fetch_size: ${HIBERNATE_DEFAULT_BATCH_FETCH_SIZE:50}
 
   flyway:
     enabled: ${FLYWAY_ENABLED:true}

@@ -2,6 +2,7 @@ package com.news_aggregator.backend.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import org.hibernate.annotations.BatchSize;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
@@ -41,6 +42,7 @@ public class User implements UserDetails {
     private OffsetDateTime updatedAt = OffsetDateTime.now();
 
     @ManyToMany(fetch = FetchType.LAZY)
+    @BatchSize(size = 50)
     @JoinTable(
             name = "user_preferred_categories",
             joinColumns = @JoinColumn(name = "user_id"),
@@ -49,6 +51,7 @@ public class User implements UserDetails {
     private Set<Category> preferredCategories = new HashSet<>();
 
     @ManyToMany(fetch = FetchType.LAZY)
+    @BatchSize(size = 50)
     @JoinTable(
             name = "user_preferred_sources",
             joinColumns = @JoinColumn(name = "user_id"),
@@ -58,6 +61,7 @@ public class User implements UserDetails {
 
     @JsonIgnore
     @OneToMany(mappedBy = "user", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = false)
+    @BatchSize(size = 50)
     private Set<UserSession> sessions = new HashSet<>();
 
     // Getters & Setters

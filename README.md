@@ -278,3 +278,7 @@ The staging-ready backend uses Flyway-managed PostgreSQL migrations, Hibernate s
 - `docs/DATABASE_MIGRATIONS.md`
 - `docs/EMAIL_SERVICE.md`
 - `docs/RUNTIME_HARDENING.md`
+
+## Runtime hardening notes
+
+See `docs/PERSISTENCE_RUNTIME_HARDENING.md` for the persistence-boundary and lazy-loading hardening applied for production/staging operation with `spring.jpa.open-in-view=false`.

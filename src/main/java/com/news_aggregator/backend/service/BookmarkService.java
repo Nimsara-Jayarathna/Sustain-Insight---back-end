@@ -33,6 +33,7 @@ public class BookmarkService {
     /**
      * Add a bookmark for this user and article
      */
+    @Transactional
     public void addBookmark(User user, Long articleId) {
         if (bookmarkRepository.existsByUser_IdAndArticle_Id(user.getId(), articleId)) {
             return; // Already bookmarked
@@ -61,6 +62,7 @@ public class BookmarkService {
     /**
      * Get all bookmarks for a user (paginated)
      */
+    @Transactional(readOnly = true)
     public PagedResponse<ArticleDto> getBookmarks(User user, int page, int size) {
         int pageIndex = page > 0 ? page - 1 : 0; // ✅ FE 1-based → Spring 0-based
         Pageable pageable = PageRequest.of(pageIndex, size, Sort.by("createdAt").descending());

@@ -14,12 +14,14 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
-import java.util.Random;
+import java.security.SecureRandom;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class EmailChangeService {
+
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private final EmailChangeOtpRepository otpRepository;
     private final UserRepository userRepository;
@@ -166,7 +168,7 @@ public void sendOtpToNewEmail(User user, String newEmail) {
     // 🔹 Generate Random 6-digit OTP
     // -----------------------------------------------------
     private String generateOtp() {
-        return String.format("%06d", new Random().nextInt(999999));
+        return String.format("%06d", SECURE_RANDOM.nextInt(1_000_000));
     }
 
     // -----------------------------------------------------

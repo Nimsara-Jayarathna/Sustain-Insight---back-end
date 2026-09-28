@@ -61,12 +61,13 @@ public class AccountController {
     // ✅ Get Current User Info
     // ------------------------------------------------------
     @GetMapping("/me")
+    @Transactional(readOnly = true)
     public ResponseEntity<?> getCurrentUser(@AuthenticationPrincipal UserDetails userDetails) {
         if (userDetails == null)
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new ErrorResponse("UNAUTHORIZED", "User not authenticated."));
 
-        User user = userRepository.findByEmail(userDetails.getUsername())
+        User user = userRepository.findProfileByEmail(userDetails.getUsername())
                 .orElse(null);
         if (user == null)
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -88,7 +89,7 @@ public class AccountController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new ErrorResponse("UNAUTHORIZED", "User not authenticated."));
 
-        User user = userRepository.findByEmail(userDetails.getUsername())
+        User user = userRepository.findProfileByEmail(userDetails.getUsername())
                 .orElse(null);
         if (user == null)
             return ResponseEntity.status(HttpStatus.NOT_FOUND)

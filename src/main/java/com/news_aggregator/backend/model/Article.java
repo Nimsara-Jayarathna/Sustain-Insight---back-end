@@ -1,6 +1,7 @@
 package com.news_aggregator.backend.model;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.BatchSize;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -38,6 +39,7 @@ public class Article {
     private Long insightCount = 0L;
 
     @ManyToMany(fetch = FetchType.LAZY)
+    @BatchSize(size = 50)
     @JoinTable(
         name = "article_sources",
         joinColumns = @JoinColumn(name = "article_id"),
@@ -46,6 +48,7 @@ public class Article {
     private List<Source> sources = new ArrayList<>();
 
     @ManyToMany(fetch = FetchType.LAZY)
+    @BatchSize(size = 50)
     @JoinTable(
         name = "article_categories",
         joinColumns = @JoinColumn(name = "article_id"),

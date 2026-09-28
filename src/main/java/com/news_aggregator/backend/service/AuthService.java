@@ -107,6 +107,7 @@ public class AuthService {
     // ============================================================
     // 🔹 REFRESH TOKEN
     // ============================================================
+    @Transactional
     public AuthResponse refreshToken(String refreshTokenStr) {
         RefreshToken refreshToken = refreshTokenService.getByToken(refreshTokenStr);
         refreshTokenService.verifyExpiration(refreshToken);

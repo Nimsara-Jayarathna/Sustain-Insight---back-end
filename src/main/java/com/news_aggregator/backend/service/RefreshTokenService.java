@@ -49,6 +49,7 @@ public class RefreshTokenService {
     // ============================================================
     // 🔹 GET BY TOKEN STRING
     // ============================================================
+    @Transactional(readOnly = true)
     public RefreshToken getByToken(String token) {
         log.trace("Fetching refresh token by token string");
         return refreshTokenRepository.findDetailedByToken(token)

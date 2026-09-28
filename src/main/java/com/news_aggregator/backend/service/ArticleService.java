@@ -192,7 +192,7 @@ public class ArticleService {
     }
 
     private User getUser(UserDetails userDetails) {
-        return userRepository.findByEmail(userDetails.getUsername())
+        return userRepository.findProfileByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
