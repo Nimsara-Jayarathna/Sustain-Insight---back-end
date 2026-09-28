@@ -51,7 +51,9 @@ newsapi:
   query: (sustainability OR climate OR renewable OR environment OR ESG OR carbon)
   sortBy: publishedAt
   language: en
-  pageSize: 50
+  pageSize: ${NEWS_API_PAGE_SIZE:50}
+  maxPages: ${NEWS_API_MAX_PAGES:2}
+  pageDelayMs: ${NEWS_API_PAGE_DELAY_MS:2000}
 
 guardian:
   url: https://content.guardianapis.com

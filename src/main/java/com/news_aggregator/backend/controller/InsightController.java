@@ -30,7 +30,7 @@ public class InsightController {
         insightService.addInsight(user, article);
 
         // return latest DTO (with updated count + state)
-        return ResponseEntity.ok(articleService.mapToDto(article, user));
+        return ResponseEntity.ok(articleService.getArticleDto(articleId, user));
     }
 
     @DeleteMapping("/{articleId}")
@@ -44,7 +44,7 @@ public class InsightController {
         insightService.removeInsight(user, article);
 
         // return latest DTO (with updated count + state)
-        return ResponseEntity.ok(articleService.mapToDto(article, user));
+        return ResponseEntity.ok(articleService.getArticleDto(articleId, user));
     }
 
     // Get total count for an article

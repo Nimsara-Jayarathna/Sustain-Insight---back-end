@@ -13,6 +13,7 @@ import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -33,6 +34,7 @@ public class ArticleService {
     @Value("${feed.hoursWindow}")
     private int feedHoursWindow;
 
+    @Transactional(readOnly = true)
     public List<ArticleDto> getLatestArticles(int limit) {
         List<Article> articles = articleRepository.findTopNArticles(limit);
         return articles.stream()
@@ -40,6 +42,7 @@ public class ArticleService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public PagedResponse<ArticleDto> getAllArticles(
             List<Long> categoryIds,
             List<Long> sourceIds,
@@ -52,6 +55,7 @@ public class ArticleService {
         return getAllArticles(categoryIds, sourceIds, keyword, date, page, size, sortParam, null);
     }
 
+    @Transactional(readOnly = true)
     public PagedResponse<ArticleDto> getAllArticles(
             List<Long> categoryIds,
             List<Long> sourceIds,
@@ -131,6 +135,7 @@ public class ArticleService {
         );
     }
 
+    @Transactional(readOnly = true)
     public List<ArticleDto> getForYouFeed(UserDetails userDetails) {
         User user = getUser(userDetails);
         List<Long> preferredCategoryIds = user.getPreferredCategories().stream().map(Category::getId).toList();
@@ -153,6 +158,7 @@ public class ArticleService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public PagedResponse<ArticleDto> getForYouFeed(UserDetails userDetails, int page, int size) {
         User user = getUser(userDetails);
         List<Long> preferredCategoryIds = user.getPreferredCategories().stream().map(Category::getId).toList();
@@ -214,11 +220,25 @@ public class ArticleService {
         );
     }
 
+    /**
+     * Loads and maps an article while the persistence context is still open.
+     * This is the safe boundary for callers that need a DTO outside this service,
+     * because Article.sources and Article.categories are intentionally LAZY.
+     */
+    @Transactional(readOnly = true)
+    public ArticleDto getArticleDto(Long articleId, User user) {
+        Article article = articleRepository.findById(articleId)
+                .orElseThrow(() -> new RuntimeException("Article not found"));
+        return mapToDto(article, user);
+    }
+
+    @Transactional(readOnly = true)
     public Article getArticleEntity(Long articleId) {
         return articleRepository.findById(articleId)
                 .orElseThrow(() -> new RuntimeException("Article not found"));
     }
 
+    @Transactional
     public void saveSynthesizedArticles(List<Map<String, Object>> articles) {
         for (Map<String, Object> articleMap : articles) {
             Article article = new Article();

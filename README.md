@@ -269,3 +269,12 @@ Have questions, ideas, or feedback? Contact `contact.sustain-insight@blipzo.xyz`
 ## Database schema management
 
 Database schema changes are managed by Flyway. On startup, Flyway applies pending migrations from `src/main/resources/db/migration`, then Hibernate validates the resulting schema with `ddl-auto=validate`. Fresh PostgreSQL databases therefore require no manual table creation. See `docs/DATABASE_MIGRATIONS.md` for the migration contract, legacy-baseline procedure, and safety rules.
+
+
+## Runtime and deployment hardening
+
+The staging-ready backend uses Flyway-managed PostgreSQL migrations, Hibernate schema validation, Brevo behind a provider abstraction, Docker health checks, and explicit transactional boundaries for lazy JPA relationships. See:
+
+- `docs/DATABASE_MIGRATIONS.md`
+- `docs/EMAIL_SERVICE.md`
+- `docs/RUNTIME_HARDENING.md`

@@ -59,8 +59,6 @@ public class EsgFilterService {
                 return true;
             }
         }
-        System.out.println("Not Relelvent");
         return false;
-        
     }
 }
